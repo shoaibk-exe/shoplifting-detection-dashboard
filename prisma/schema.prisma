@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // Only needed when using a cloud provider that doesn't support the creation of new databases, like Heroku. Learn more: https://pris.ly/d/migrate-shadow
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   Int      @id @default(autoincrement())
+  email                String   @unique
+  name                 String
+  password             String
+  roleId               Int
+  role                 Role     @relation(fields: [roleId], references: [id]) // This defines the relation to Role
+  profilePicture       String?  @db.VarChar(300)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  passwordResetToken   String?
+  phoneNumber          String
+  status               String
+  passwordResetTokenExp DateTime?
+  sessions             Session[]
+  apiKeys              ApiKey[]
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  permissions Json
+  role        String   @unique
+  users       User[]   // This defines the reverse relation to User
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  key       String
+  name      String   @unique
+  userId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Camera{
+  id Int @id @default(autoincrement())
+  cameraModel String
+  cameraIp String
+  cameraUsername String
+  cameraPassword String
+  cameraLocation String
+  cameraStatus String @default("Active")
+  autoFlash Boolean? @default(false)
+  cameraVoice Boolean? @default(false) 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt 
+  videoRecording VideoRecording[]
+  anomaly_logs anomaly_logs[] 
+}
+// const anomaly_details = [ 
+//   {
+//     "anomaly_category": "Human",
+//     "anomaly_time": "2023-07-05 10:30:00",
+//     "anomaly_score": 0.85
+//   },
+//   {
+//     "anomaly_category": "Human",
+//     "anomaly_time": "2023-07-05 10:30:00",
+//     "anomaly_score": 0.85
+//   },
+//   {
+//     "anomaly_category": "Human",
+//     "anomaly_time": "2023-07-05 10:30:00",
+//     "anomaly_score": 0.85
+//   },
+//   {
+//     "anomaly_category": "Human",
+//     "anomaly_time": "2023-07-05 10:30:00",
+//     "anomaly_score": 0.85
+//   },
+// ]
+model anomaly_logs{
+  id Int @id @default(autoincrement())
+  anomaly_details Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // anomaly_category String
+  // anomaly_time String
+  // anomaly_score Float
+  cameraId Int
+  camera Camera @relation(fields: [cameraId], references: [id])
+}
+
+model VideoRecording{
+  id Int @id @default(autoincrement())
+  cameraId Int
+  camera Camera @relation(fields: [cameraId], references: [id])
+  cameraIp String?
+  cameraLocation String?
+  cameraStatus String?
+  recordingURL String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
