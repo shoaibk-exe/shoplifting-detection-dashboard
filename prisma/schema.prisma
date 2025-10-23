@@ -67,6 +67,23 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+
+model Alert {
+  id           Int      @id @default(autoincrement())
+  alert_number String
+  date         DateTime @default(now())
+  time         String
+  alert_link   String?
+  camera_num   Int
+  camera       Camera   @relation(fields: [camera_num], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("alerts")
+}
+
+
+
 model Camera{
   id Int @id @default(autoincrement())
   cameraModel String
@@ -81,6 +98,7 @@ model Camera{
   updatedAt DateTime @updatedAt 
   videoRecording VideoRecording[]
   anomaly_logs anomaly_logs[] 
+  alerts       Alert[]  // ADD THIS LINE
 }
 // const anomaly_details = [ 
 //   {
