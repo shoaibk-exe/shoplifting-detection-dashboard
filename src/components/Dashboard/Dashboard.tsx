@@ -26,7 +26,7 @@ const Dashboard: React.FC = () => {
         <div className="col-span-12 xl:col-span-8">
           <AlertsChart />
         </div>
-        
+
         {/* Vertical Analytics - Takes 4 columns */}
         {/* <div className="col-span-12 xl:col-span-4">
           <AlertsAnalytics />
