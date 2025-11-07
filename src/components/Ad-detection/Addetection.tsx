@@ -129,10 +129,11 @@ const Addetection: React.FC = () => {
         </div>
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
           {camerasArr && camerasArr.map((camera) => {
-            const cameraLink = `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/video_feed?rtsp_url=rtsp://${camera.cameraUsername}:${camera.cameraPassword}@${camera.cameraIp}/live&height=${height}&width=${width}`
+            const pythonBackendUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://192.168.100.56:5000';
+            const cameraLink = `${pythonBackendUrl}/video_feed?rtsp_url=rtsp://${camera.cameraUsername}:${camera.cameraPassword}@${camera.cameraIp}/live&height=${height}&width=${width}`
 
             return (
-              <div key={camera.id} className="flex flex-col justify-center items-center cursor-pointer" onClick={() => window.open(`http://192.168.100.56:5000/video_feed?rtsp_url=rtsp://${camera.cameraUsername}:${camera.cameraPassword}@${camera.cameraIp}/live&height=${height}&width=${width}`)}>
+              <div key={camera.id} className="flex flex-col justify-center items-center cursor-pointer" onClick={() => window.open(`${pythonBackendUrl}/video_feed?rtsp_url=rtsp://${camera.cameraUsername}:${camera.cameraPassword}@${camera.cameraIp}/live&height=${height}&width=${width}`)}>
                 <div className="flex justify-center items-center rounded-[10px] w-[10em] h-[10em] gap-4 bg-white shadow-1 dark:bg-gray-dark dark:shadow-card">
                   <CameraVideo aspectOne src={cameraLink} />
                 </div>

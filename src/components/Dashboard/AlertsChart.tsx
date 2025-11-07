@@ -313,32 +313,6 @@ const CameraUptimeAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-semibold text-blue-800">Total Cameras</h3>
-          <p className="text-2xl font-bold text-blue-600">{cameras.length}</p>
-        </div>
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h3 className="text-lg font-semibold text-green-800">Online Now</h3>
-          <p className="text-2xl font-bold text-green-600">
-            {uptimeData.filter(c => c.currentStatus === 'online').length}
-          </p>
-        </div>
-        <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-          <h3 className="text-lg font-semibold text-red-800">Offline Now</h3>
-          <p className="text-2xl font-bold text-red-600">
-            {uptimeData.filter(c => c.currentStatus === 'offline').length}
-          </p>
-        </div>
-        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-          <h3 className="text-lg font-semibold text-yellow-800">Total Alerts</h3>
-          <p className="text-2xl font-bold text-yellow-600">
-            {uptimeData.reduce((sum, cam) => sum + cam.totalAlerts, 0)}
-          </p>
-        </div>
-      </div>
-
       {/* Legend */}
       <div className="flex justify-center gap-6 mb-6 flex-wrap">
         <div className="flex items-center gap-2">

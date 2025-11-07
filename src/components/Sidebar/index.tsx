@@ -98,13 +98,6 @@ const menuGroups = [
       // },
       {
         icon: (
-          <Icons.planBag />
-        ),
-        label: "Buy a Plan",
-        route: "/plans",
-      },
-      {
-        icon: (
           <Icons.Setting />
         ),
         label: "Setting",
@@ -129,7 +122,7 @@ const menuGroups = [
         label: "Sign Out",
         route: "#",
         onClick: async () => {
-          await signOut()
+          await signOut({ callbackUrl: '/auth/signin', redirect: true });
         }
       },
     ],
@@ -170,7 +163,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
               style={{ width: "auto", height: "auto" }}
             />
           </Link>
-
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="block lg:hidden"

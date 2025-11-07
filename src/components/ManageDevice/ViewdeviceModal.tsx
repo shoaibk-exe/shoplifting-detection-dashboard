@@ -109,15 +109,15 @@ const ViewDeviceModel: React.FC<ViewDeviceModelProps> = ({
                             
                             {/* Camera Preview Section */}
                                 <div className="aspect-video bg-gray-300 dark:bg-gray-600 rounded flex items-center justify-center">
-                                {cameraData.cameraIp ? (
+                                {cameraData.cameraIp && cameraData.cameraUsername && cameraData.cameraPassword ? (
                                     <img
-                                        src={cameraData.cameraIp}
+                                        src={`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://192.168.100.56:5000'}/video_feed?rtsp_url=rtsp://${cameraData.cameraUsername}:${cameraData.cameraPassword}@${cameraData.cameraIp}/live&height=480&width=640&webview=False`}
                                         alt="Live Camera Feed"
                                         className="w-full h-full object-contain"
                                         />
                                 ) : (
                                     <p className="text-gray-600 dark:text-gray-400">
-                                    No camera IP available.
+                                    Camera configuration incomplete. Missing IP, username, or password.
                                     </p>
                                 )}
                                 </div>

@@ -9,8 +9,8 @@ const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { data: session } = useSession();
   const handleLogout = async () => {
-    await signOut();
     setDropdownOpen(false);
+    await signOut({ callbackUrl: '/auth/signin', redirect: true });
   };
 
   const profilePic = session?.user?.image

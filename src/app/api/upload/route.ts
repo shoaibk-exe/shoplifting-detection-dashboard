@@ -4,7 +4,8 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file: File | null = formData.get("file") as unknown as File;
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/upload_video`, {
+        const pythonBackendUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || process.env.PYTHON_BACKEND_URL || 'http://192.168.100.56:5000';
+        const response = await fetch(`${pythonBackendUrl}/upload_video`, {
             method: 'POST',
             body: formData,
         })

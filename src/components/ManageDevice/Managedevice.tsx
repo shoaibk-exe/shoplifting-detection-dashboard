@@ -543,7 +543,7 @@ const Managedevice = () => {
 
   useEffect(() => {
     console.log("allCameras", allCameras);
-    if (allCameras && allCameras.length > 0) {
+    if (Array.isArray(allCameras)) {
       setCameras(
         allCameras.map((camera: any) => ({
           ...camera,
@@ -610,6 +610,8 @@ const Managedevice = () => {
           ),
         }))
       );
+    } else {
+      setCameras([]);
     }
   }, [allCameras]);
 

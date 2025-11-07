@@ -28,38 +28,33 @@ const DataTableForCameras = ({ cameras, loading }: DataTableForCamerasProps) => 
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [filteredCameras, setFilteredCameras] = useState<Cameras[]>([]);
 
-    // Pagination logic
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const selectedData = (Array.isArray(cameras) ? cameras : []).slice(startIndex, startIndex + rowsPerPage);
-
-    // const selectedData = cameras.slice(startIndex, startIndex + rowsPerPage);
-    const [filteredCameras, setFilteredCameras] = useState(selectedData);
-
-
-    const totalPages = Math.ceil(filteredCameras.length / rowsPerPage);
-
+    // Filter cameras based on search term
     useEffect(() => {
         setCurrentPage(1);
         if (searchTerm === '') {
-            setFilteredCameras(cameras);
+            setFilteredCameras(cameras || []);
         } else {
-            setFilteredCameras(cameras.filter(item =>
-                item.cameraModel.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.cameraIp.includes(searchTerm) ||
-                item.cameraLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.cameraStatus.toLowerCase().includes(searchTerm.toLowerCase())
+            setFilteredCameras((cameras || []).filter(item =>
+                item.cameraModel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.cameraIp?.includes(searchTerm) ||
+                item.cameraLocation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.cameraStatus?.toLowerCase().includes(searchTerm.toLowerCase())
             ));
         }
     }, [searchTerm, cameras]);
 
-    const handlePageChange = (pageNumber: number) => {
-        setCurrentPage(pageNumber);
-    };
+    // Pagination logic
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const selectedData = filteredCameras.slice(startIndex, startIndex + rowsPerPage);
+    const totalPages = Math.ceil((filteredCameras.length || 0) / rowsPerPage);
 
-    useEffect(() => {
-        setFilteredCameras(selectedData);
-    }, [currentPage, rowsPerPage]);
+    const handlePageChange = (pageNumber: number) => {
+        if (pageNumber >= 1 && pageNumber <= totalPages) {
+            setCurrentPage(pageNumber);
+        }
+    };
 
     return (
 
@@ -130,7 +125,14 @@ const DataTableForCameras = ({ cameras, loading }: DataTableForCamerasProps) => 
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredCameras.map(({ id, cameraModel, cameraIp, cameraLocation, cameraStatus, actions }, index) => (
+                                {selectedData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                            {loading ? 'Loading...' : 'No cameras found'}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    selectedData.map(({ id, cameraModel, cameraIp, cameraLocation, cameraStatus, actions }, index) => (
                                     <tr key={index}
                                         className="border-b bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-dark-2 dark:text-gray-300 dark:hover:bg-gray-700"
                                     >
@@ -159,48 +161,88 @@ const DataTableForCameras = ({ cameras, loading }: DataTableForCamerasProps) => 
                                         </td>
 
                                     </tr>
-                                ))}
+                                    ))
+                                )}
                             </tbody>
                         </table>
                         <div className="mt-4 flex items-center justify-between">
                             <span className="text-sm text-gray-700 dark:text-gray-300">
-                                Showing {startIndex + 1} to {startIndex + selectedData.length} of{" "}
-                                {(cameras && cameras.length) || 0} entries
+                                Showing {filteredCameras.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + selectedData.length, filteredCameras.length)} of{" "}
+                                {filteredCameras.length} entries
                             </span>
 
                             <div className="p-4 sm:p-6 xl:p-7.5">
                                 <nav>
                                     <ul className="flex flex-wrap items-center">
-                                        <li
-                                            onClick={() => handlePageChange(currentPage - 1)}
-                                        >
+                                        <li>
                                             <Link
-                                                className="flex h-8 w-8 items-center justify-center rounded-[3px] hover:bg-primary hover:text-white"
+                                                className={`flex h-8 w-8 items-center justify-center rounded-[3px] hover:bg-primary hover:text-white ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 href="#"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    if (currentPage > 1) handlePageChange(currentPage - 1);
+                                                }}
                                             >
                                                 <Icons.chevronLeft />
                                             </Link>
                                         </li>
                                         {/* Page numbers */}
-                                        {[...Array(totalPages)].map((_, pageIndex) => (
-                                            <li key={pageIndex}>
-                                                <Link
-                                                    className={`flex items-center justify-center rounded-[3px] px-3 py-1.5 font-medium hover:bg-primary hover:text-white ${currentPage === pageIndex + 1 ? 'bg-primary text-white' : ''}`}
-                                                    href="#"
-                                                    onClick={() => handlePageChange(pageIndex + 1)}
-                                                >
-                                                    {pageIndex + 1}
-                                                </Link>
-                                            </li>
-                                        ))}
-                                        <li
-                                            onClick={() => handlePageChange(currentPage + 1)}
-                                        >
+                                        {totalPages > 0 && [...Array(totalPages)].map((_, pageIndex) => {
+                                            const pageNum = pageIndex + 1;
+                                            // Show first page, last page, current page, and pages around current
+                                            if (
+                                                pageNum === 1 ||
+                                                pageNum === totalPages ||
+                                                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                                            ) {
+                                                return (
+                                                    <li key={pageIndex}>
+                                                        <Link
+                                                            className={`flex items-center justify-center rounded-[3px] px-3 py-1.5 font-medium hover:bg-primary hover:text-white ${currentPage === pageNum ? 'bg-primary text-white' : ''}`}
+                                                            href="#"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handlePageChange(pageNum);
+                                                            }}
+                                                        >
+                                                            {pageNum}
+                                                        </Link>
+                                                    </li>
+                                                );
+                                            } else if (
+                                                pageNum === currentPage - 2 ||
+                                                pageNum === currentPage + 2
+                                            ) {
+                                                return (
+                                                    <li key={pageIndex}>
+                                                        <span className="px-3 py-1.5">...</span>
+                                                    </li>
+                                                );
+                                            }
+                                            return null;
+                                        })}
+                                        <li>
                                             <Link
-                                                className="flex h-8 w-8 items-center justify-center rounded-[3px] hover:bg-primary hover:text-white"
+                                                className={`flex h-8 w-8 items-center justify-center rounded-[3px] hover:bg-primary hover:text-white ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 href="#"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    if (currentPage < totalPages) handlePageChange(currentPage + 1);
+                                                }}
                                             >
-                                                <Icons.chevronLeft />
+                                                <svg
+                                                    className="fill-current rotate-180"
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 18 18"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                    <path
+                                                        d="M5.81953 16.1158C5.65078 16.1158 5.51016 16.0596 5.36953 15.9471C5.11641 15.6939 5.11641 15.3002 5.36953 15.0471L11.2758 9.0002L5.36953 2.98145C5.11641 2.72832 5.11641 2.33457 5.36953 2.08145C5.62266 1.82832 6.01641 1.82832 6.26953 2.08145L12.6258 8.5502C12.8789 8.80332 12.8789 9.19707 12.6258 9.45019L6.26953 15.9189C6.15703 16.0314 5.98828 16.1158 5.81953 16.1158Z"
+                                                        fill="currentColor"
+                                                    />
+                                                </svg>
                                             </Link>
                                         </li>
                                     </ul>

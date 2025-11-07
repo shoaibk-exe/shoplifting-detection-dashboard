@@ -62,7 +62,6 @@ export const config = {
     "/manage-devices/:path*",
     "/live-stream",
     "/manage-devices",
-    "/plans",
     "/setting",
     "/dashboard/:path*",
     '/auth/signup',

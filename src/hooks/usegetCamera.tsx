@@ -6,6 +6,7 @@ const useGetCameras = (setLoading?: any, filter?: any) => {
     const [cameras, setCameras] = useState<any>([]);
 
     useEffect(() => {
+        setLoading && setLoading(true);
         fetch(url, {
             cache: 'no-store',
             next: { revalidate: 0 },
@@ -15,18 +16,18 @@ const useGetCameras = (setLoading?: any, filter?: any) => {
             },
         })
             .then(async (response) => {
-                
                 const data = await response.json();
-                setCameras(data.camera);
-                console.log("res",data)
-                console.log("res",cameras)
-                setLoading && setLoading(false)
+                // API returns { cameras: [...], success: true, count: ... }
+                setCameras(data.cameras || []);
+                console.log("Fetched cameras:", data.cameras?.length || 0);
+                setLoading && setLoading(false);
             })
             .catch((err) => {
-                setLoading && setLoading(false)
-                console.error(err)
+                console.error("Error fetching cameras:", err);
+                setCameras([]);
+                setLoading && setLoading(false);
             });
-    }, [filter]);
+    }, [filter, url]);
 
     return cameras;
 };

@@ -13,7 +13,6 @@ interface Alert {
     };
 }
 
-
 const ShopliftingAlerts: React.FC = () => {
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState(true);
@@ -131,12 +130,8 @@ const ShopliftingAlerts: React.FC = () => {
                                 Camera
                             </th>
                             <th className="px-4 py-4 font-medium text-black dark:text-white">
-                                Date
-                            </th>
-                            <th className="px-4 py-4 font-medium text-black dark:text-white">
                                 Time
                             </th>
-
                             <th className="px-4 py-4 font-medium text-black dark:text-white">
                                 Description
                             </th>

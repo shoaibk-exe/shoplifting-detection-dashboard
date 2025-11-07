@@ -38,10 +38,20 @@ const SidebarItem = ({ item, pageName, setPageName }: any) => {
 };
 
 const SidebarList = ({ item, handleClick, isItemActive, pageName }: any) => {
-  return (<li onClick={item?.onClick}>
+  const handleItemClick = (e: React.MouseEvent) => {
+    if (item?.onClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      item.onClick();
+    } else {
+      handleClick();
+    }
+  };
+
+  return (<li>
     <Link
       href={item.route}
-      onClick={handleClick}
+      onClick={handleItemClick}
       className={`${isItemActive ? "bg-primary/[.07] text-primary dark:bg-white/10 dark:text-white" : "text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-gray-5 dark:hover:bg-white/10 dark:hover:text-white"} group relative flex items-center gap-3 rounded-[7px] px-3.5 py-3 font-medium duration-300 ease-in-out`}
     >
       {item.icon}

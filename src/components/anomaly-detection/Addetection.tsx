@@ -85,21 +85,24 @@ const Addetection = () => {
           {
             isLoading ? "Loading..." :
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
-                {camerasArr.map(({ id, cameraIp, cameraLocation, cameraModel, cameraUsername, cameraPassword }: Camera) => (
-                  <div key={id} className="flex flex-col justify-center items-center cursor-pointer" onClick={() => window.open(`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/video_feed?rtsp_url=rtsp://${cameraUsername}:${cameraPassword}@${cameraIp}/live&height=${height}&width=${width}&webview=True`)}>
-                    <div className="flex justify-center items-center rounded-[10px] w-[10em] h-[10em] gap-4 bg-white shadow-1 dark:bg-gray-dark dark:shadow-card">
-                      <CameraVideo aspectOne src={`${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/video_feed?rtsp_url=rtsp://${cameraUsername}:${cameraPassword}@${cameraIp}/live&height=150&width=150&webview=False`} />
+                {camerasArr.map(({ id, cameraIp, cameraLocation, cameraModel, cameraUsername, cameraPassword }: Camera) => {
+                  const pythonBackendUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://192.168.100.56:5000';
+                  return (
+                    <div key={id} className="flex flex-col justify-center items-center cursor-pointer" onClick={() => window.open(`${pythonBackendUrl}/video_feed?rtsp_url=rtsp://${cameraUsername}:${cameraPassword}@${cameraIp}/live&height=${height}&width=${width}&webview=True`)}>
+                      <div className="flex justify-center items-center rounded-[10px] w-[10em] h-[10em] gap-4 bg-white shadow-1 dark:bg-gray-dark dark:shadow-card">
+                        <CameraVideo aspectOne src={`${pythonBackendUrl}/video_feed?rtsp_url=rtsp://${cameraUsername}:${cameraPassword}@${cameraIp}/live&height=150&width=150&webview=False`} />
+                      </div>
+                      <div className="flex flex-col text-center font-medium text-dark dark:text-white cursor-pointer">
+                        <span>
+                          {cameraModel}
+                        </span>
+                        <span>
+                          {cameraLocation}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col text-center font-medium text-dark dark:text-white cursor-pointer">
-                      <span>
-                        {cameraModel}
-                      </span>
-                      <span>
-                        {cameraLocation}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>}
         </div>
         <div className="col-span-3 md:col-span-1 bg-white dark:bg-gray-dark">
