@@ -121,7 +121,7 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
           </div>
         )}
 
-        {(error || !(camera as any).isLive || camera.cameraStatus === "OFFLINE" || camera.cameraStatus === "DEGRADED") && (
+        {(error || camera.cameraStatus === "OFFLINE" || camera.cameraStatus === "DEGRADED") && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div className="text-center text-white p-4">
               <svg
@@ -138,22 +138,22 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
                 />
               </svg>
               <p className="mb-2 font-semibold">
-                {camera.cameraStatus === "OFFLINE" ? "Camera Offline" : 
-                 camera.cameraStatus === "DEGRADED" ? "Camera Degraded" : 
-                 "Failed to load stream"}
+                {camera.cameraStatus === "OFFLINE"
+                  ? "Camera Offline"
+                  : camera.cameraStatus === "DEGRADED"
+                  ? "Camera Degraded"
+                  : "Failed to load stream"}
               </p>
               {(camera as any).statusDetail && (
                 <p className="text-sm text-gray-400 mb-2">{(camera as any).statusDetail}</p>
               )}
-              {!(camera as any).isLive && (
-                <p className="text-xs text-gray-500">Not streaming</p>
-              )}
+              <p className="text-xs text-gray-500">Processed stream unavailable</p>
             </div>
           </div>
         )}
 
-        {/* Stream Image - Only show if camera is live */}
-        {((camera as any).isLive && camera.cameraStatus !== "OFFLINE" && !error) && (
+        {/* Stream Image - Show processed stream only if we have a valid URL */}
+        {!error && Boolean(streamUrl) && (
           <img
             src={streamUrl}
             alt={`${camera.cameraModel} stream`}

@@ -1,99 +1,40 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import CameraStream from '@/components/Camera/CameraStream';
 import { Camera } from '@/types/camera';
+import { useFlaskCameras } from '@/hooks/useFlaskCameras';
 
 const CameraGrid: React.FC = () => {
-  const [cameras, setCameras] = useState<Camera[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [streamStatus, setStreamStatus] = useState<Record<number, boolean>>({}); // ADD THIS
-  
-const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
-  setStreamStatus(prev => ({
-    ...prev,
-    [cameraId]: isOnline
-  }));
-};
-  useEffect(() => {
-    fetchCameras();
-    
-    // Auto-refresh interval: 30000ms = 30 seconds
-    // To change: modify the number below (value is in milliseconds)
-    const interval = setInterval(() => {
-      fetchCameras();
-    }, 30000);
+  const { cameras: flaskCameras, loading, error, refetch } = useFlaskCameras(15000);
+  const [streamStatus, setStreamStatus] = useState<Record<number, boolean>>({});
 
-    // Listen for global refresh event
-    const handleGlobalRefresh = () => {
-      fetchCameras();
-    };
-    window.addEventListener('dashboardRefresh', handleGlobalRefresh);
+  const cameras: Camera[] = useMemo(() => {
+    return (flaskCameras || []).map((c) => ({
+      id: c.id,
+      cameraModel: c.name || `Camera-${c.id}`,
+      cameraLocation: c.name || `Camera-${c.id}`,
+      // IMPORTANT: Use processed stream URL, not RTSP
+      cameraIp: c.processed_url || '',
+      cameraStatus: c.status || 'OFFLINE',
+      cameraUsername: '',
+      cameraPassword: '',
+    }));
+  }, [flaskCameras]);
 
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('dashboardRefresh', handleGlobalRefresh);
-    };
-  }, []);
-
-      useEffect(() => {
-      // Store stream status in localStorage or pass to parent component
-      const onlineCameras = Object.values(streamStatus).filter(Boolean).length;
-      const offlineCameras = cameras.length - onlineCameras;
-      
-      // Trigger custom event for CameraStats to listen
-      window.dispatchEvent(new CustomEvent('cameraStreamStatus', {
-        detail: { streamStatus, onlineCameras, offlineCameras }
-      }));
-    }, [streamStatus, cameras.length]);
-
-  const fetchCameras = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/camera-config');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch camera config');
-      }
-      
-      const data = await response.json();
-
-      if (data.success && data.cameras) {
-        // Convert cameras object to array with detailed info
-        const camerasArray = Object.values(data.cameras).map((cam: any, index: number) => ({
-          id: index + 1,
-          cameraModel: cam.camera_name || `Camera-${index + 1}`,
-          cameraLocation: cam.camera_name || `Camera-${index + 1}`,
-          cameraIp: cam.rtsp_url || '',
-          cameraStatus: cam.status || 'OFFLINE',
-          cameraUsername: 'admin',
-          cameraPassword: '',
-          // Additional data from Python API
-          configuredFps: cam.configured_fps,
-          currentFps: cam.current_fps,
-          fpsPercentage: cam.fps_percentage,
-          connectionQuality: cam.connection_quality,
-          continuousDowntimeFormatted: cam.continuous_downtime_formatted,
-          continuousUptimeFormatted: cam.continuous_uptime_formatted,
-          isLive: cam.is_live,
-          isStreaming: cam.is_streaming,
-          statusDetail: cam.status_detail,
-          totalFramesProcessed: cam.total_frames_processed,
-        }));
-        
-        setCameras(camerasArray);
-      } else {
-        setError(data.error || 'Failed to fetch cameras');
-      }
-    } catch (err) {
-      setError('Error connecting to Python API');
-      console.error('Error fetching cameras:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
+    setStreamStatus(prev => ({
+      ...prev,
+      [cameraId]: isOnline
+    }));
   };
+
+  useEffect(() => {
+    const onlineCameras = Object.values(streamStatus).filter(Boolean).length;
+    const offlineCameras = cameras.length - onlineCameras;
+    window.dispatchEvent(new CustomEvent('cameraStreamStatus', {
+      detail: { streamStatus, onlineCameras, offlineCameras }
+    }));
+  }, [streamStatus, cameras.length]);
 
   if (loading) {
     return (
@@ -116,7 +57,7 @@ const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
         </svg>
         <p className="text-red-800 dark:text-red-200 mb-4 font-semibold">{error}</p>
         <button
-          onClick={fetchCameras}
+          onClick={refetch}
           className="rounded-md bg-red-600 px-6 py-2 text-white hover:bg-red-700 transition-colors"
         >
           Retry
@@ -154,12 +95,12 @@ const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {cameras.map((camera) => (
-            <CameraStream 
-              key={camera.id} 
-              camera={camera}
-              onStatusChange={handleStreamStatusChange}
-            />
-          ))}
+          <CameraStream
+            key={camera.id}
+            camera={camera}
+            onStatusChange={handleStreamStatusChange}
+          />
+        ))}
       </div>
     </div>
   );
