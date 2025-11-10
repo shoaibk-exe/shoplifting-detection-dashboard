@@ -4,10 +4,16 @@ import CameraStats from "@/components/Dashboard/CameraStats";
 import CameraGrid from "@/components/Dashboard/CameraGrid";
 import AlertsChart from "@/components/Dashboard/AlertsChart";
 import AlertsAnalytics from "@/components/Dashboard/AlertsAnalytics";
+import SystemHealth from "@/components/Dashboard/SystemHealth";
 
 const Dashboard: React.FC = () => {
   return (
     <>
+      {/* System Health Section */}
+      <div className="mt-4 md:mt-6 2xl:mt-9">
+        <SystemHealth />
+      </div>
+
       {/* Camera Grid Section */}
       <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-9 2xl:gap-7.5">
         <div className="col-span-12">

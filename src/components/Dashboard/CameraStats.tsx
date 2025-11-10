@@ -29,23 +29,49 @@ const CameraStats: React.FC = () => {
       }));
     };
 
+    const handleSync = () => {
+      fetchCameraStats();
+    };
+
     window.addEventListener('cameraStreamStatus', handleStreamStatus);
+    window.addEventListener('systemDataSynced', handleSync);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('cameraStreamStatus', handleStreamStatus);
+      window.removeEventListener('systemDataSynced', handleSync);
     };
   }, []);
 
   const fetchCameraStats = async () => {
     try {
-      const response = await fetch('/api/cameras?status=all');
-      const data = await response.json();
+      // Try to fetch from system status API first
+      const [statusRes, camerasRes] = await Promise.all([
+        fetch('/api/system-status'),
+        fetch('/api/cameras?status=all'),
+      ]);
 
-      if (data.success) {
-        const cameras: Camera[] = data.cameras;
-        const total = cameras.length;
+      const statusData = await statusRes.json();
+      const camerasData = await camerasRes.json();
 
+      // Use system status if available, otherwise fall back to cameras API
+      if (statusData.success && statusData.status) {
+        const systemStatus = statusData.status;
+        setStats(prev => ({
+          ...prev,
+          totalCameras: systemStatus.totalCameras,
+          onlineCameras: systemStatus.liveCamerasCount,
+          offlineCameras: systemStatus.offlineCount,
+          systemUptime: systemStatus.totalCameras > 0 
+            ? Math.round((systemStatus.liveCamerasCount / systemStatus.totalCameras) * 100) 
+            : 0,
+          loading: false
+        }));
+      }
+
+      // Still fetch camera locations from cameras API
+      if (camerasData.success) {
+        const cameras: Camera[] = camerasData.cameras;
         const locationMap = cameras.reduce((acc, camera) => {
           const loc = camera.cameraLocation || 'Unknown';
           acc[loc] = (acc[loc] || 0) + 1;
@@ -59,9 +85,7 @@ const CameraStats: React.FC = () => {
 
         setStats(prev => ({
           ...prev,
-          totalCameras: total,
           cameraLocations: locations,
-          loading: false
         }));
       }
     } catch (error) {

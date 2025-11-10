@@ -11,6 +11,29 @@ generator client {
   provider = "prisma-client-js"
 }
 
+
+model SystemStatus {
+  id                Int      @id @default(autoincrement())
+  totalCameras      Int
+  liveCamerasCount  Int
+  degradedCount     Int
+  offlineCount      Int
+  overallHealth     String
+  statusSummary     String
+  timestamp         DateTime @default(now())
+}
+
+model GPUInfo {
+  id                Int      @id @default(autoincrement())
+  utilizationPercent Float
+  memoryStatus      String
+  allocatedGB       Float
+  reservedGB        Float
+  available         Boolean
+  createdAt         DateTime @default(now())
+}
+
+
 model User {
   id                   Int      @id @default(autoincrement())
   email                String   @unique
