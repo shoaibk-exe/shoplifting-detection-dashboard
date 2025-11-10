@@ -31,19 +31,29 @@ const SystemHealth: React.FC = () => {
   useEffect(() => {
     fetchSystemHealth();
     
+    // Auto-refresh interval: 30000ms = 30 seconds
+    // To change: modify the number below (value is in milliseconds)
     const interval = setInterval(() => {
       fetchSystemHealth();
-    }, 30000); // Refresh every 30 seconds
+    }, 30000);
 
     const handleSync = () => {
+      // Refresh data when sync event is triggered
+      fetchSystemHealth();
+    };
+
+    // Listen for global refresh event
+    const handleGlobalRefresh = () => {
       fetchSystemHealth();
     };
 
     window.addEventListener('systemDataSynced', handleSync);
+    window.addEventListener('dashboardRefresh', handleGlobalRefresh);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('systemDataSynced', handleSync);
+      window.removeEventListener('dashboardRefresh', handleGlobalRefresh);
     };
   }, []);
 
@@ -146,7 +156,6 @@ const SystemHealth: React.FC = () => {
             Real-time system monitoring and GPU information
           </p>
         </div>
-        <SyncButton />
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
       {/* System Status Card */}

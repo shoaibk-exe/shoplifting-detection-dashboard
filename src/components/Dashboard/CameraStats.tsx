@@ -15,6 +15,8 @@ const CameraStats: React.FC = () => {
   useEffect(() => {
     fetchCameraStats();
     
+    // Auto-refresh interval: 30000ms = 30 seconds
+    // To change: modify the number below (value is in milliseconds)
     const interval = setInterval(() => {
       fetchCameraStats();
     }, 30000);
@@ -33,47 +35,42 @@ const CameraStats: React.FC = () => {
       fetchCameraStats();
     };
 
+    // Listen for global refresh event
+    const handleGlobalRefresh = () => {
+      fetchCameraStats();
+    };
+
     window.addEventListener('cameraStreamStatus', handleStreamStatus);
     window.addEventListener('systemDataSynced', handleSync);
+    window.addEventListener('dashboardRefresh', handleGlobalRefresh);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('cameraStreamStatus', handleStreamStatus);
       window.removeEventListener('systemDataSynced', handleSync);
+      window.removeEventListener('dashboardRefresh', handleGlobalRefresh);
     };
   }, []);
 
   const fetchCameraStats = async () => {
     try {
-      // Try to fetch from system status API first
-      const [statusRes, camerasRes] = await Promise.all([
-        fetch('/api/system-status'),
-        fetch('/api/cameras?status=all'),
-      ]);
+      // Fetch from camera-config API which has all the data
+      const response = await fetch('/api/camera-config');
+      const data = await response.json();
 
-      const statusData = await statusRes.json();
-      const camerasData = await camerasRes.json();
-
-      // Use system status if available, otherwise fall back to cameras API
-      if (statusData.success && statusData.status) {
-        const systemStatus = statusData.status;
-        setStats(prev => ({
-          ...prev,
-          totalCameras: systemStatus.totalCameras,
-          onlineCameras: systemStatus.liveCamerasCount,
-          offlineCameras: systemStatus.offlineCount,
-          systemUptime: systemStatus.totalCameras > 0 
-            ? Math.round((systemStatus.liveCamerasCount / systemStatus.totalCameras) * 100) 
-            : 0,
-          loading: false
-        }));
-      }
-
-      // Still fetch camera locations from cameras API
-      if (camerasData.success) {
-        const cameras: Camera[] = camerasData.cameras;
-        const locationMap = cameras.reduce((acc, camera) => {
-          const loc = camera.cameraLocation || 'Unknown';
+      if (data.success) {
+        const cameras = data.cameras || {};
+        const summary = data.summary || {};
+        const camerasArray = Object.values(cameras);
+        
+        // Calculate stats from camera data
+        const total = camerasArray.length;
+        const liveCount = camerasArray.filter((cam: any) => cam.is_live || cam.status === 'ONLINE').length;
+        const offlineCount = camerasArray.filter((cam: any) => cam.status === 'OFFLINE' || !cam.is_live).length;
+        
+        // Get camera locations
+        const locationMap = camerasArray.reduce((acc: any, camera: any) => {
+          const loc = camera.camera_name || 'Unknown';
           acc[loc] = (acc[loc] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);
@@ -85,7 +82,14 @@ const CameraStats: React.FC = () => {
 
         setStats(prev => ({
           ...prev,
+          totalCameras: summary.total_cameras || total,
+          onlineCameras: summary.live_cameras_count || liveCount,
+          offlineCameras: summary.offline_cameras_count || offlineCount,
+          systemUptime: (summary.total_cameras || total) > 0 
+            ? Math.round(((summary.live_cameras_count || liveCount) / (summary.total_cameras || total)) * 100) 
+            : 0,
           cameraLocations: locations,
+          loading: false
         }));
       }
     } catch (error) {

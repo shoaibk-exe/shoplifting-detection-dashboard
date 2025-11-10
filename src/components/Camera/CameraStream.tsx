@@ -64,16 +64,43 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {camera.cameraLocation}
               </p>
+              {/* Additional Camera Info */}
+              {(camera as any).currentFps !== undefined && (
+                <div className="flex items-center gap-3 mt-2 text-xs">
+                  <span className="text-gray-500 dark:text-gray-400">
+                    FPS: {(camera as any).currentFps?.toFixed(1)}/{(camera as any).configuredFps} ({(camera as any).fpsPercentage?.toFixed(1)}%)
+                  </span>
+                  {(camera as any).continuousUptimeFormatted && (
+                    <span className="text-green-600 dark:text-green-400">
+                      ↑ {(camera as any).continuousUptimeFormatted}
+                    </span>
+                  )}
+                  {(camera as any).continuousDowntimeFormatted && (
+                    <span className="text-red-600 dark:text-red-400">
+                      ↓ {(camera as any).continuousDowntimeFormatted}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <div
-                className={`h-2 w-2 rounded-full ${camera.cameraStatus === "Active"
+                className={`h-2 w-2 rounded-full ${
+                  (camera as any).isLive || camera.cameraStatus === "ONLINE" || camera.cameraStatus === "LIVE"
                     ? "bg-green-500"
+                    : camera.cameraStatus === "DEGRADED"
+                    ? "bg-yellow-500"
                     : "bg-red-500"
-                  }`}
+                }`}
               />
-              <span className="text-xs text-gray-600 dark:text-gray-400">
-                {camera.cameraIp}
+              <span className={`text-xs font-medium ${
+                (camera as any).isLive || camera.cameraStatus === "ONLINE" || camera.cameraStatus === "LIVE"
+                  ? "text-green-600 dark:text-green-400"
+                  : camera.cameraStatus === "DEGRADED"
+                  ? "text-yellow-600 dark:text-yellow-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}>
+                {camera.cameraStatus || "OFFLINE"}
               </span>
             </div>
           </div>
@@ -94,8 +121,8 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
           </div>
         )}
 
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center">
+        {(error || !(camera as any).isLive || camera.cameraStatus === "OFFLINE" || camera.cameraStatus === "DEGRADED") && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div className="text-center text-white p-4">
               <svg
                 className="w-16 h-16 mx-auto mb-4 text-red-500"
@@ -110,21 +137,31 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <p className="mb-2 font-semibold">Failed to load stream</p>
-              <p className="text-sm text-gray-400">{streamUrl}</p>
+              <p className="mb-2 font-semibold">
+                {camera.cameraStatus === "OFFLINE" ? "Camera Offline" : 
+                 camera.cameraStatus === "DEGRADED" ? "Camera Degraded" : 
+                 "Failed to load stream"}
+              </p>
+              {(camera as any).statusDetail && (
+                <p className="text-sm text-gray-400 mb-2">{(camera as any).statusDetail}</p>
+              )}
+              {!(camera as any).isLive && (
+                <p className="text-xs text-gray-500">Not streaming</p>
+              )}
             </div>
           </div>
         )}
 
-        {/* Stream Image */}
-        <img
-          src={streamUrl}
-          alt={`${camera.cameraModel} stream`}
-          className="h-full w-full object-cover"
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-          style={{ display: error ? "none" : "block" }}
-        />
+        {/* Stream Image - Only show if camera is live */}
+        {((camera as any).isLive && camera.cameraStatus !== "OFFLINE" && !error) && (
+          <img
+            src={streamUrl}
+            alt={`${camera.cameraModel} stream`}
+            className="h-full w-full object-cover"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        )}
 
         {/* Fullscreen Minimize Button */}
         {isFullscreen && (

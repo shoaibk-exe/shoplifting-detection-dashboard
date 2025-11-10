@@ -54,11 +54,23 @@ const CameraUptimeAnalytics: React.FC = () => {
 
   useEffect(() => {
     fetchCamerasAndAlerts();
+    
+    // Auto-refresh interval: 300000ms = 5 minutes
+    // To change: modify the number below (value is in milliseconds)
     const interval = setInterval(() => {
       fetchCamerasAndAlerts();
     }, 300000);
 
-    return () => clearInterval(interval);
+    // Listen for global refresh event
+    const handleGlobalRefresh = () => {
+      fetchCamerasAndAlerts();
+    };
+    window.addEventListener('dashboardRefresh', handleGlobalRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('dashboardRefresh', handleGlobalRefresh);
+    };
   }, [selectedDate]);
 
   const fetchCamerasAndAlerts = async () => {
@@ -66,21 +78,37 @@ const CameraUptimeAnalytics: React.FC = () => {
       setLoading(true);
       setIsCheckingStreams(true);
 
-      const camerasResponse = await fetch('/api/cameras');
-      const camerasResult = await camerasResponse.json();
+      const [cameraConfigResponse, alertsResponse] = await Promise.all([
+        fetch('/api/camera-config'),
+        fetch('/api/alerts'),
+      ]);
 
-      const alertsResponse = await fetch('/api/alerts');
+      const cameraConfigResult = await cameraConfigResponse.json();
       const alertsResult = await alertsResponse.json();
 
-      if (camerasResult.success && alertsResult.success) {
-        const camerasData = camerasResult.cameras;
-        const alertsData = alertsResult.alerts;
+      if (cameraConfigResult.success && alertsResult.success) {
+        // Convert cameras object to array format
+        const camerasObj = cameraConfigResult.cameras || {};
+        const camerasData = Object.values(camerasObj).map((cam: any, index: number) => ({
+          id: index + 1,
+          cameraModel: cam.camera_name || `Camera-${index + 1}`,
+          cameraLocation: cam.camera_name || `Camera-${index + 1}`,
+          cameraIp: cam.rtsp_url || '',
+          cameraStatus: cam.status || 'OFFLINE',
+          isLive: cam.is_live || false,
+          // Add uptime data from API
+          uptimeSeconds: cam.uptime_seconds || 0,
+          continuousUptimeSeconds: cam.continuous_uptime_seconds || 0,
+          continuousDowntimeSeconds: cam.continuous_downtime_seconds || 0,
+        })) as Camera[];
+
+        const alertsData = alertsResult.alerts || [];
 
         setCameras(camerasData);
         setAlerts(alertsData);
 
         const uptimePromises = camerasData.map(async (camera: Camera) => {
-          const isOnline = await checkCameraStream(camera);
+          const isOnline = camera.isLive || camera.cameraStatus === 'ONLINE' || camera.cameraStatus === 'LIVE';
           return generateUptimeData(camera, isOnline, alertsData);
         });
 
@@ -100,7 +128,21 @@ const CameraUptimeAnalytics: React.FC = () => {
 
   const checkCameraStream = async (camera: Camera): Promise<boolean> => {
     try {
-      if (camera.cameraStatus !== 'Active') {
+      // Use isLive property if available, otherwise check status
+      if ((camera as any).isLive !== undefined) {
+        return (camera as any).isLive;
+      }
+      
+      if (camera.cameraStatus === 'ONLINE' || camera.cameraStatus === 'LIVE') {
+        return true;
+      }
+      
+      if (camera.cameraStatus === 'OFFLINE' || camera.cameraStatus === 'DEGRADED') {
+        return false;
+      }
+
+      // Fallback: try to check stream if status is unknown
+      if (!camera.cameraIp) {
         return false;
       }
 
@@ -153,14 +195,27 @@ const CameraUptimeAnalytics: React.FC = () => {
           alerts: hourAlerts
         });
       } else {
-        const status = camera.cameraStatus === 'Active' ? 'online' : 'offline';
+        // Use API status to determine if camera was online
+        const status = (camera.cameraStatus === 'ONLINE' || camera.cameraStatus === 'LIVE' || (camera as any).isLive) 
+          ? 'online' 
+          : 'offline';
         uptimeData.push({ hour, status, alerts: hourAlerts });
       }
     }
 
-    const onlineHours = uptimeData.filter(d => d.status === 'online').length;
-    const totalHours = isToday ? currentHour + 1 : 24;
-    const uptimePercentage = (onlineHours / totalHours) * 100;
+    // Calculate uptime percentage based on API data if available
+    let uptimePercentage = 0;
+    if ((camera as any).uptimeSeconds !== undefined && (camera as any).continuousUptimeSeconds !== undefined) {
+      const totalSeconds = ((camera as any).continuousUptimeSeconds || 0) + ((camera as any).continuousDowntimeSeconds || 0);
+      if (totalSeconds > 0) {
+        uptimePercentage = (((camera as any).continuousUptimeSeconds || 0) / totalSeconds) * 100;
+      }
+    } else {
+      // Fallback to hour-based calculation
+      const onlineHours = uptimeData.filter(d => d.status === 'online').length;
+      const totalHours = isToday ? currentHour + 1 : 24;
+      uptimePercentage = (onlineHours / totalHours) * 100;
+    }
 
     return {
       cameraId: camera.id,
@@ -303,13 +358,6 @@ const CameraUptimeAnalytics: React.FC = () => {
             onChange={(e) => setSelectedDate(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2"
           />
-          <button
-            onClick={fetchCamerasAndAlerts}
-            disabled={isCheckingStreams}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded transition duration-200"
-          >
-            {isCheckingStreams ? 'Checking...' : 'Refresh'}
-          </button>
         </div>
       </div>
 

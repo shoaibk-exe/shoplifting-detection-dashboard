@@ -18,11 +18,22 @@ const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
   useEffect(() => {
     fetchCameras();
     
+    // Auto-refresh interval: 30000ms = 30 seconds
+    // To change: modify the number below (value is in milliseconds)
     const interval = setInterval(() => {
       fetchCameras();
     }, 30000);
 
-    return () => clearInterval(interval);
+    // Listen for global refresh event
+    const handleGlobalRefresh = () => {
+      fetchCameras();
+    };
+    window.addEventListener('dashboardRefresh', handleGlobalRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('dashboardRefresh', handleGlobalRefresh);
+    };
   }, []);
 
       useEffect(() => {
@@ -41,21 +52,43 @@ const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/cameras');
+      const response = await fetch('/api/camera-config');
       
       if (!response.ok) {
-        throw new Error('Failed to fetch cameras');
+        throw new Error('Failed to fetch camera config');
       }
       
       const data = await response.json();
 
-      if (data.success) {
-        setCameras(data.cameras);
+      if (data.success && data.cameras) {
+        // Convert cameras object to array with detailed info
+        const camerasArray = Object.values(data.cameras).map((cam: any, index: number) => ({
+          id: index + 1,
+          cameraModel: cam.camera_name || `Camera-${index + 1}`,
+          cameraLocation: cam.camera_name || `Camera-${index + 1}`,
+          cameraIp: cam.rtsp_url || '',
+          cameraStatus: cam.status || 'OFFLINE',
+          cameraUsername: 'admin',
+          cameraPassword: '',
+          // Additional data from Python API
+          configuredFps: cam.configured_fps,
+          currentFps: cam.current_fps,
+          fpsPercentage: cam.fps_percentage,
+          connectionQuality: cam.connection_quality,
+          continuousDowntimeFormatted: cam.continuous_downtime_formatted,
+          continuousUptimeFormatted: cam.continuous_uptime_formatted,
+          isLive: cam.is_live,
+          isStreaming: cam.is_streaming,
+          statusDetail: cam.status_detail,
+          totalFramesProcessed: cam.total_frames_processed,
+        }));
+        
+        setCameras(camerasArray);
       } else {
         setError(data.error || 'Failed to fetch cameras');
       }
     } catch (err) {
-      setError('Error connecting to server');
+      setError('Error connecting to Python API');
       console.error('Error fetching cameras:', err);
     } finally {
       setLoading(false);
@@ -110,24 +143,13 @@ const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Live Camera Feeds
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Real-time monitoring from {cameras.length} {cameras.length === 1 ? 'camera' : 'cameras'}
-          </p>
-        </div>
-        <button
-          onClick={fetchCameras}
-          className="rounded-md bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600 transition-colors flex items-center gap-2"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Live Camera Feeds
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Real-time monitoring from {cameras.length} {cameras.length === 1 ? 'camera' : 'cameras'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">

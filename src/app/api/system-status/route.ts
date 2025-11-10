@@ -1,39 +1,57 @@
 import { NextResponse, NextRequest } from "next/server";
-import { prisma } from "@/libs/prismaDb";
 
-// GET - Fetch latest system status
+const PYTHON_BACKEND_URL = 'http://localhost:5555/api/debug/camera_config';
+
+// GET - Fetch system status directly from Python API
 export async function GET(req: NextRequest) {
   try {
-    const latestStatus = await prisma.systemStatus.findFirst({
-      orderBy: {
-        timestamp: 'desc',
-      },
+    const res = await fetch(PYTHON_BACKEND_URL, {
+      cache: 'no-store',
+      next: { revalidate: 0 },
     });
 
-    if (!latestStatus) {
+    if (!res.ok) {
+      throw new Error(`Python API responded with status: ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    if (!data.success || !data.summary) {
       return NextResponse.json(
         {
           success: false,
-          message: "No system status found",
+          message: "Invalid response from Python API",
           status: null,
         },
-        { status: 404 }
+        { status: 500 }
       );
     }
+
+    // Transform Python API response to match expected format
+    const systemStatus = {
+      totalCameras: data.summary.total_cameras,
+      liveCamerasCount: data.summary.live_cameras_count,
+      degradedCount: data.summary.degraded_cameras_count,
+      offlineCount: data.summary.offline_cameras_count,
+      overallHealth: data.summary.overall_health,
+      statusSummary: data.summary.status_summary,
+      timestamp: data.summary.timestamp,
+    };
 
     return NextResponse.json(
       {
         success: true,
-        status: latestStatus,
+        status: systemStatus,
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Error fetching system status:", error);
+  } catch (error: any) {
+    console.error("Error fetching system status from Python API:", error);
+    
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch system status",
+        error: error?.message || "Failed to fetch system status from Python API",
         status: null,
       },
       { status: 500 }

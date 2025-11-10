@@ -2,7 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 
 const PYTHON_BACKEND_URL = 'http://localhost:5555/api/debug/camera_config';
 
-// GET - Fetch GPU info directly from Python API
+// GET - Fetch camera config directly from Python API
 export async function GET(req: NextRequest) {
   try {
     const res = await fetch(PYTHON_BACKEND_URL, {
@@ -16,41 +16,40 @@ export async function GET(req: NextRequest) {
 
     const data = await res.json();
 
-    if (!data.success || !data.gpu_info) {
+    if (!data.success) {
       return NextResponse.json(
         {
           success: false,
           message: "Invalid response from Python API",
+          cameras: {},
+          summary: null,
           gpuInfo: null,
         },
         { status: 500 }
       );
     }
 
-    // Transform Python API response to match expected format
-    const gpuInfo = {
-      utilizationPercent: data.gpu_info.utilization_percent,
-      memoryStatus: data.gpu_info.memory_status,
-      allocatedGB: data.gpu_info.allocated_gb,
-      reservedGB: data.gpu_info.reserved_gb,
-      available: data.gpu_info.available,
-      createdAt: new Date().toISOString(), // Use current time since API doesn't provide this
-    };
-
+    // Return the full camera config data
     return NextResponse.json(
       {
         success: true,
-        gpuInfo: gpuInfo,
+        cameras: data.cameras || {},
+        summary: data.summary || null,
+        gpuInfo: data.gpu_info || null,
+        statusBreakdown: data.status_breakdown || null,
+        systemInfo: data.system_info || null,
       },
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("Error fetching GPU info from Python API:", error);
+    console.error("Error fetching camera config from Python API:", error);
     
     return NextResponse.json(
       {
         success: false,
-        error: error?.message || "Failed to fetch GPU info from Python API",
+        error: error?.message || "Failed to fetch camera config from Python API",
+        cameras: {},
+        summary: null,
         gpuInfo: null,
       },
       { status: 500 }
