@@ -50,10 +50,34 @@ const SystemHealth: React.FC = () => {
   const fetchSystemHealth = async () => {
     try {
       setLoading(true);
+      let statusSet = false; // Track if we've set the status
 
       // Fetch from Python API via camera-config endpoint
-      const cameraConfigRes = await fetch('/api/camera-config', { cache: 'no-store' });
-      const cameraConfigData = await cameraConfigRes.json();
+      let cameraConfigData;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+        const cameraConfigRes = await fetch('/api/camera-config', { 
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!cameraConfigRes.ok) {
+          throw new Error(`API responded with status: ${cameraConfigRes.status}`);
+        }
+        
+        cameraConfigData = await cameraConfigRes.json();
+      } catch (fetchError: any) {
+        // Silently handle fetch errors and fallback to database
+        if (fetchError.name !== 'AbortError') {
+          console.error('Error fetching camera config:', fetchError);
+        }
+        // Fallback to database
+        cameraConfigData = { success: false };
+      }
 
       if (cameraConfigData?.success) {
         const summary = cameraConfigData.summary || {};
@@ -89,6 +113,7 @@ const SystemHealth: React.FC = () => {
           statusSummary: `${live} Live, ${offline} Offline, ${degraded} Degraded`,
           timestamp: summary.timestamp || new Date().toISOString(),
         } as any);
+        statusSet = true;
 
         // Store camera config data for runtime stats
         setCameraConfigData(cameraConfigData);
@@ -96,8 +121,30 @@ const SystemHealth: React.FC = () => {
         // GPU info not provided by Python API, skip it
       } else {
         // Fallback to database if Python API fails
-        const camerasRes = await fetch('/api/flask/cameras', { cache: 'no-store' });
-        const camerasData = await camerasRes.json();
+        let camerasData;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+          const camerasRes = await fetch('/api/flask/cameras', { 
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!camerasRes.ok) {
+            throw new Error(`API responded with status: ${camerasRes.status}`);
+          }
+          
+          camerasData = await camerasRes.json();
+        } catch (fetchError: any) {
+          // Silently handle fetch errors
+          if (fetchError.name !== 'AbortError') {
+            console.error('Error fetching cameras from database:', fetchError);
+          }
+          camerasData = { success: false, cameras: [] };
+        }
 
         if (camerasData?.success && Array.isArray(camerasData.cameras)) {
           const cams = camerasData.cameras;
@@ -120,6 +167,7 @@ const SystemHealth: React.FC = () => {
             statusSummary: `${live} Live, ${offline} Offline, ${degraded} Degraded`,
             timestamp: new Date().toISOString(),
           } as any);
+          statusSet = true;
         } else {
           setSystemStatus({
             id: 0,
@@ -131,12 +179,38 @@ const SystemHealth: React.FC = () => {
             statusSummary: `0 Live, 0 Offline, 0 Degraded`,
             timestamp: new Date().toISOString(),
           } as any);
+          statusSet = true;
         }
 
         // GPU info not available from database fallback either
       }
+
+      // If all fetches failed, set default empty state
+      if (!statusSet) {
+        setSystemStatus({
+          id: 0,
+          totalCameras: 0,
+          liveCamerasCount: 0,
+          degradedCount: 0,
+          offlineCount: 0,
+          overallHealth: 'OK',
+          statusSummary: `0 Live, 0 Offline, 0 Degraded`,
+          timestamp: new Date().toISOString(),
+        } as any);
+      }
     } catch (error) {
       console.error('Error fetching system health:', error);
+      // Set default state on error
+      setSystemStatus({
+        id: 0,
+        totalCameras: 0,
+        liveCamerasCount: 0,
+        degradedCount: 0,
+        offlineCount: 0,
+        overallHealth: 'OK',
+        statusSummary: `0 Live, 0 Offline, 0 Degraded`,
+        timestamp: new Date().toISOString(),
+      } as any);
     } finally {
       setLoading(false);
     }
