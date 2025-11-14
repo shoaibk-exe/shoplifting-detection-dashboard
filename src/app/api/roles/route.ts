@@ -14,16 +14,33 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Check if role already exists
-        const roleExist = await prisma.role.findFirst({
+        const roleName = name.toLowerCase();
+        const roleValue = createUserRole(name);
+
+        // Check if role name already exists
+        const roleExistByName = await prisma.role.findFirst({
             where: {
-                name: name.toLowerCase(),
+                name: roleName,
             },
         });
 
-        if (roleExist !== null) {
+        if (roleExistByName !== null) {
             return NextResponse.json(
                 { message: "Role already exists. Please change the role name!" },
+                { status: 400 }
+            );
+        }
+
+        // Check if role value already exists (unique constraint)
+        const roleExistByValue = await prisma.role.findFirst({
+            where: {
+                role: roleValue,
+            },
+        });
+
+        if (roleExistByValue !== null) {
+            return NextResponse.json(
+                { message: `Role value "${roleValue}" already exists. Please use a different name!` },
                 { status: 400 }
             );
         }
@@ -31,10 +48,10 @@ export async function POST(req: NextRequest) {
         // Create role
         await prisma.role.create({
             data: {
-                name: name.toLowerCase(),
+                name: roleName,
                 description: description || null,
                 permissions: permissions,
-                role: createUserRole(name),
+                role: roleValue,
             },
         });
 
@@ -42,10 +59,49 @@ export async function POST(req: NextRequest) {
             { message: "Role created successfully!" },
             { status: 201 }
         );
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating role:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
+        
+        // Provide more specific error messages
+        if (error?.code === 'P2002') {
+            // Unique constraint violation
+            const target = error?.meta?.target || [];
+            const field = Array.isArray(target) ? target[0] : target;
+            
+            if (field === 'Role_name_key' || field?.includes('name')) {
+                return NextResponse.json(
+                    { message: "Role name already exists. Please use a different name!" },
+                    { status: 400 }
+                );
+            } else if (field === 'Role_role_key' || field?.includes('role')) {
+                return NextResponse.json(
+                    { message: `Role value already exists. Please use a different name!` },
+                    { status: 400 }
+                );
+            }
+            return NextResponse.json(
+                { message: `Role with this ${field} already exists. Please use a different value!` },
+                { status: 400 }
+            );
+        }
+        
+        // Handle other Prisma errors
+        if (error?.code) {
+            return NextResponse.json(
+                { 
+                    message: `Database error: ${error.message || "Role creation failed"}`,
+                    error: error.message
+                },
+                { status: 400 }
+            );
+        }
+        
         return NextResponse.json(
-            { message: "Role creation failed, Please try again!" },
+            { 
+                message: "Role creation failed, Please try again!",
+                error: error instanceof Error ? error.message : "Unknown error"
+            },
             { status: 500 }
         );
     }
