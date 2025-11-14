@@ -80,7 +80,7 @@ model role {
   permissions Json
   role        String   @unique(map: "Role_role_key")
   createdAt   DateTime @default(now())
-  updatedAt   DateTime
+  updatedAt   DateTime @updatedAt
   user        user[]
 }
 
@@ -113,7 +113,7 @@ model user {
   roleId                Int
   profilePicture        String?   @db.VarChar(300)
   createdAt             DateTime  @default(now())
-  updatedAt             DateTime
+  updatedAt             DateTime  @updatedAt
   passwordResetToken    String?
   phoneNumber           String
   status                String
@@ -142,7 +142,7 @@ model videorecording {
   cameraStatus   String?
   recordingURL   String
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   camera         camera   @relation(fields: [cameraId], references: [id], map: "VideoRecording_cameraId_fkey")
 
   @@index([cameraId], map: "VideoRecording_cameraId_fkey")

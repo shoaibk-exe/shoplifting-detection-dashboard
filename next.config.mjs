@@ -29,7 +29,22 @@ const nextConfig = {
         port: ""
       }
     ]
-  }
+  },
+  // Optimize for faster dev builds
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'react-hot-toast'],
+  },
+  // Reduce compilation overhead
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // Faster refresh in dev mode
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

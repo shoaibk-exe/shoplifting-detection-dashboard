@@ -11,17 +11,34 @@ function cameraToResponse(camera: any) {
   };
 }
 
+// Cache for 30 seconds
+export const revalidate = 30;
+
 export async function GET() {
   try {
+    // Optimize query - only select needed fields
     const cameras = await prisma.camera.findMany({
+      select: {
+        id: true,
+        cameraModel: true,
+        cameraIp: true,
+        cameraStatus: true,
+        processedUrl: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       cameras: cameras.map(cameraToResponse),
       count: cameras.length,
     });
+
+    // Add cache headers
+    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+
+    return response;
   } catch (error: any) {
     console.error("Failed to fetch cameras:", error);
     return NextResponse.json(

@@ -1,20 +1,39 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/libs/prismaDb";
 
+// Cache for 20 seconds
+export const revalidate = 20;
+
 // GET - Fetch all alerts
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const limit = searchParams.get('limit');
   
   try {
-    console.log("Fetching alerts from database...");
-    
+    // Remove console.log for performance
+    const limitNum = limit ? parseInt(limit) : undefined;
+    if (limit && isNaN(limitNum!)) {
+      return NextResponse.json(
+        { message: 'Invalid limit parameter', alerts: [] },
+        { status: 400 }
+      );
+    }
+
+    // Optimize query - only select needed fields
     const alerts = await prisma.alert.findMany({
-      take: limit ? parseInt(limit) : undefined,
+      take: limitNum,
       orderBy: {
         date: 'desc',
       },
-      include: {
+      select: {
+        id: true,
+        alert_number: true,
+        date: true,
+        time: true,
+        alert_link: true,
+        camera_num: true,
+        createdAt: true,
+        updatedAt: true,
         camera: {
           select: {
             id: true,
@@ -33,9 +52,7 @@ export async function GET(req: NextRequest) {
       updatedAt: alert.updatedAt?.toISOString(),
     }));
 
-    console.log(`Found ${serializedAlerts.length} alerts`);
-    
-    return NextResponse.json(
+    const response = NextResponse.json(
       { 
         alerts: serializedAlerts,
         success: true,
@@ -43,6 +60,11 @@ export async function GET(req: NextRequest) {
       }, 
       { status: 200 }
     );
+
+    // Add cache headers
+    response.headers.set('Cache-Control', 'public, s-maxage=20, stale-while-revalidate=40');
+
+    return response;
   } catch (error) {
     console.error('Error fetching alerts:', error);
     return NextResponse.json(
@@ -69,24 +91,48 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate camera_num is a number
+    const cameraId = typeof camera_num === 'number' ? camera_num : parseInt(camera_num);
+    if (isNaN(cameraId)) {
+      return NextResponse.json(
+        { message: 'Invalid camera number format' },
+        { status: 400 }
+      );
+    }
+
+    // Verify camera exists
+    const camera = await prisma.camera.findUnique({
+      where: { id: cameraId },
+    });
+
+    if (!camera) {
+      return NextResponse.json(
+        { message: 'Camera not found' },
+        { status: 404 }
+      );
+    }
+
     const alert = await prisma.alert.create({
       data: {
         alert_number,
         date: date ? new Date(date) : new Date(),
         time: time || new Date().toLocaleTimeString(),
-        alert_link,
-        camera_num,
+        alert_link: alert_link || null,
+        camera_num: cameraId,
       },
     });
 
     return NextResponse.json(
       { message: 'Alert created successfully!', alert },
-      { status: 200 }
+      { status: 201 }
     );
   } catch (error) {
     console.error('Error creating alert:', error);
     return NextResponse.json(
-      { message: 'Failed to create alert', error: 'Error' },
+      {
+        message: 'Failed to create alert',
+        error: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

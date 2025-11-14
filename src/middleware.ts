@@ -30,14 +30,31 @@ const paths = [
 
 export default withAuth(
   function middleware(req: NextRequestWithAuth) {
-    const path = paths.find((path) => path.path === req.nextUrl?.pathname);
+    const pathname = req.nextUrl?.pathname;
+    
+    // Early return if path doesn't need permission check
+    const path = paths.find((p) => p.path === pathname);
+    if (!path) {
+      return NextResponse.next();
+    }
+
+    // Check permissions only for protected paths
     const token = req.nextauth.token;
-    if (path && token?.role && Array.isArray(token.role) && token.role.length > 0 && 'permissions' in token.role) {
-      const permissions = token.role.permissions;
+    if (token?.role) {
+      // Handle both array and object role formats
+      let permissions: string[] = [];
+      
+      if (Array.isArray(token.role) && token.role.length > 0 && 'permissions' in token.role[0]) {
+        permissions = token.role[0].permissions || [];
+      } else if (typeof token.role === 'object' && 'permissions' in token.role) {
+        permissions = token.role.permissions || [];
+      }
+
       if (Array.isArray(permissions) && !permissions.includes(path.permission[0])) {
         return NextResponse.redirect(new URL("/access-denied", req.url));
       }
     }
+    
     return NextResponse.next();
   }, {
   secret: process.env.SECRET,
@@ -57,10 +74,11 @@ export const config = {
     "/device-registration",
     "/anomaly-detection/:path*",
     "/saved-video",
-    // "/users/:path*",
-    // "/roles/:path*",
+    "/shoplifting-alerts/:path*",
+    "/users/:path*",
+    "/roles/:path*",
     "/manage-devices/:path*",
-    "/live-stream",
+    "/live-stream/:path*",
     "/manage-devices",
     "/plans",
     "/setting",

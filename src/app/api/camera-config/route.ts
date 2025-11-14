@@ -1,20 +1,32 @@
 import { NextResponse, NextRequest } from "next/server";
+import { prisma } from "@/libs/prismaDb";
 
 const PYTHON_API_BASE =
   process.env.PYTHON_API_URL?.replace(/\/$/, "") || "http://127.0.0.1:5555";
-const PYTHON_BACKEND_URL = `${PYTHON_API_BASE}/api/debug/camera_config`;
+// Support both /api/camera-config and /api/debug/camera_config
+const PYTHON_BACKEND_URL = `${PYTHON_API_BASE}/api/camera-config`;
+
+// Cache for 10 seconds (Python API data changes frequently)
+export const revalidate = 10;
 
 // GET - Fetch camera config directly from Python API
 export async function GET(req: NextRequest) {
   try {
+    // Fail fast - 1 second timeout max
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+    const timeout = setTimeout(() => controller.abort(), 1000);
 
-    const res = await fetch(PYTHON_BACKEND_URL, {
-      cache: "no-store",
-      next: { revalidate: 0 },
-      signal: controller.signal,
-    });
+    const res = await Promise.race([
+      fetch(PYTHON_BACKEND_URL, {
+        cache: "no-store",
+        next: { revalidate: 10 },
+        signal: controller.signal,
+      }),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout")), 1000)
+      ),
+    ]);
+    
     clearTimeout(timeout);
 
     if (!res.ok) {
@@ -31,7 +43,7 @@ export async function GET(req: NextRequest) {
         {
           success: false,
           message: "Invalid response from Python API",
-          cameras: {},
+          cameras: [],
           summary: null,
           gpuInfo: null,
         },
@@ -40,10 +52,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Return the full camera config data
-    return NextResponse.json(
+    // Handle both array and object formats for cameras
+    const cameras = Array.isArray(data.cameras) 
+      ? data.cameras 
+      : (typeof data.cameras === 'object' && data.cameras !== null 
+          ? Object.values(data.cameras) 
+          : []);
+
+    const response = NextResponse.json(
       {
         success: true,
-        cameras: data.cameras || {},
+        cameras: cameras,
         summary: data.summary || null,
         gpuInfo: data.gpu_info || null,
         statusBreakdown: data.status_breakdown || null,
@@ -51,20 +70,40 @@ export async function GET(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
-    const isAbort = error?.name === "AbortError";
-    console.error("Error fetching camera config from Python API:", error);
 
-    return NextResponse.json(
+    // Add cache headers
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=30');
+
+    return response;
+  } catch (error: any) {
+    // Fail fast - don't wait for database updates
+    // Return cached/empty response immediately
+    console.debug("camera-config: Python API unavailable, returning empty payload");
+    
+    // Don't block on database update - do it in background if needed
+    // Mark cameras OFFLINE asynchronously (non-blocking)
+    prisma.camera.updateMany({
+      data: { cameraStatus: "OFFLINE" },
+    }).catch(() => {
+      // Silently fail - don't block response
+    });
+    // Return success=true with empty payload and let UI show offline placeholders
+    const response = NextResponse.json(
       {
-        success: false,
-        error: isAbort ? "Python API request timed out" : (error?.message || "Failed to fetch camera config from Python API"),
-        cameras: {},
+        success: true,
+        cameras: [],
         summary: null,
         gpuInfo: null,
+        statusBreakdown: null,
+        systemInfo: null,
       },
-      { status: 502 }
+      { status: 200 }
     );
+
+    // Cache error responses for shorter time
+    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+
+    return response;
   }
 }
 

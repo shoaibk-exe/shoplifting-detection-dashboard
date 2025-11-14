@@ -4,43 +4,72 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/libs/auth";
 
 export async function DELETE(request: Request) {
-	const body = await request.json();
-	const { email } = body;
+	try {
+		const body = await request.json();
+		const { email } = body;
 
-	if (!email) {
-		return new NextResponse("Missing Fields", { status: 400 });
-	}
+		if (!email) {
+			return NextResponse.json(
+				{ message: "Missing Fields" },
+				{ status: 400 }
+			);
+		}
 
-	const session = await getServerSession(authOptions);
-	const formatedEmail = email.toLowerCase();
+		const session = await getServerSession(authOptions);
+		const formatedEmail = email.toLowerCase();
 
 	const user = await prisma.user.findUnique({
 		where: {
 			email: formatedEmail,
 		},
+		include: {
+			role: true,
+		},
 	});
 
-	const isOthorized = session?.user?.email === email || user?.role === "ADMIN";
+		if (!user) {
+			return NextResponse.json(
+				{ message: "User not found" },
+				{ status: 404 }
+			);
+		}
 
-	if (!isOthorized) {
-		return new NextResponse("Unauthorized", { status: 401 });
-	}
+		const isOthorized = session?.user?.email === email || user?.role?.role === "ADMIN" || user?.role?.role === "SUPERADMIN";
 
-	const isDemoUser = user?.email?.includes("demo-");
+		if (!isOthorized) {
+			return NextResponse.json(
+				{ message: "Unauthorized" },
+				{ status: 401 }
+			);
+		}
 
-	if (isDemoUser) {
-		return new NextResponse("Can't delete demo user", { status: 401 });
-	}
+		const isDemoUser = user?.email?.includes("demo-");
 
-	try {
+		if (isDemoUser) {
+			return NextResponse.json(
+				{ message: "Can't delete demo user" },
+				{ status: 401 }
+			);
+		}
+
 		await prisma.user.delete({
 			where: {
 				email: formatedEmail,
 			},
 		});
 
-		return new NextResponse("Account Deleted Successfully!", { status: 200 });
+		return NextResponse.json(
+			{ message: "Account deleted successfully!" },
+			{ status: 200 }
+		);
 	} catch (error) {
-		return new NextResponse("Something went wrong", { status: 500 });
+		console.error("Error deleting user:", error);
+		return NextResponse.json(
+			{
+				message: "Something went wrong",
+				error: error instanceof Error ? error.message : "Unknown error"
+			},
+			{ status: 500 }
+		);
 	}
 }
