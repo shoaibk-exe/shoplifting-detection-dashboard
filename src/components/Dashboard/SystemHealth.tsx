@@ -343,7 +343,7 @@ const SystemHealth: React.FC = () => {
                 <div key={camera.id} className="flex items-center justify-between text-sm border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0">
                   <div className="flex items-center gap-3">
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {camera.cameraModel || camera.cameraLocation || `Camera ${camera.id}`}
+                      {camera.camera_name || camera.cameraModel || camera.cameraLocation || `Camera ${camera.id || 'Unknown'}`}
                     </span>
                     <span className={`px-2 py-1 rounded text-xs ${
                       camera.is_streaming 

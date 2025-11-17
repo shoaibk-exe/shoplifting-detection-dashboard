@@ -14,6 +14,15 @@ export async function POST(request: Request) {
 			);
 		}
 
+		// Validate email format
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!emailRegex.test(email)) {
+			return NextResponse.json(
+				{ message: "Invalid email format. Please enter a valid email address." },
+				{ status: 400 }
+			);
+		}
+
 		const formatedEmail = email.toLowerCase();
 
 		// Check if user already exists

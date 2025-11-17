@@ -17,6 +17,7 @@ export const revalidate = 30;
 export async function GET() {
   try {
     // Optimize query - only select needed fields
+    // Order by ID ascending for consistent sequential numbering in UI
     const cameras = await prisma.camera.findMany({
       select: {
         id: true,
@@ -26,7 +27,7 @@ export async function GET() {
         processedUrl: true,
         createdAt: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { id: "asc" },
     });
 
     const response = NextResponse.json({

@@ -24,6 +24,15 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return NextResponse.json(
+                { message: 'Invalid email format. Please enter a valid email address.' },
+                { status: 400 }
+            );
+        }
+
         // Check if user already exists
         const userExist = await prisma.user.findFirst({
             where: {
@@ -203,6 +212,30 @@ export async function PUT(req: NextRequest) {
         const updateData: any = {};
 
         if (data.email) {
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(data.email)) {
+                return NextResponse.json(
+                    { message: 'Invalid email format. Please enter a valid email address.' },
+                    { status: 400 }
+                );
+            }
+            
+            // Check if email is already taken by another user
+            const emailExists = await prisma.user.findFirst({
+                where: {
+                    email: data.email.toLowerCase(),
+                    id: { not: userId },
+                },
+            });
+
+            if (emailExists) {
+                return NextResponse.json(
+                    { message: 'Email already exists. Please use a different email address.' },
+                    { status: 400 }
+                );
+            }
+            
             updateData.email = data.email.toLowerCase();
         }
         if (data.name) {

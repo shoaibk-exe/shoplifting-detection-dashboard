@@ -5,13 +5,25 @@ This guide explains how to set up the database, apply migrations, and seed initi
 
 ## Quick Start
 
-### 1. Apply Database Migration
+### 1. Apply Database Migrations
 
-Run the SQL migration to fix `updatedAt` columns:
+**Recommended Method (Using Prisma):**
+
+This will apply all pending migrations automatically:
+
+```bash
+npm run migrate:prod
+```
+
+**Alternative Method (Manual SQL):**
+
+If you prefer to run SQL manually, use the complete file path with `.sql` extension:
 
 ```bash
 mysql -u root -p dashboard < prisma/migrations/20250115000000_fix_updated_at_columns/migration.sql
 ```
+
+**Note:** Make sure you're in the project root directory when running this command.
 
 Or manually execute in MySQL:
 
@@ -51,13 +63,60 @@ npm run db:seed
 
 ## For Fresh Setup on New PC
 
-1. Clone the repository
-2. Copy `.env.example` to `.env` and configure database connection
-3. Install dependencies: `npm install`
-4. Apply migration: Run the SQL migration file
-5. Generate Prisma client: `npm run prisma:generate`
-6. Seed database: `npm run db:seed`
-7. Start dev server: `npm run dev`
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd shoplifting-detection-dashboard
+   ```
+
+2. **Configure environment**
+   - Copy `.env.example` to `.env` (if exists)
+   - Set `DATABASE_URL` in `.env` file:
+     ```
+     DATABASE_URL="mysql://root:your_password@localhost:3306/dashboard"
+     ```
+
+3. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+4. **Apply all migrations** (Recommended for Fresh Database)
+   
+   **If database is empty (no tables):**
+   ```bash
+   npx prisma migrate dev
+   ```
+   This will create all tables and apply all migrations automatically.
+   
+   **If database already has tables:**
+   ```bash
+   npm run migrate:prod
+   ```
+   
+   **Or manually apply migrations:**
+   ```bash
+   # Apply initial migration
+   mysql -u root -p dashboard < prisma/migrations/20251110120045_init/migration.sql
+   
+   # Apply fix migration
+   mysql -u root -p dashboard < prisma/migrations/20250115000000_fix_updated_at_columns/migration.sql
+   ```
+
+5. **Generate Prisma client**
+   ```bash
+   npm run prisma:generate
+   ```
+
+6. **Seed the database**
+   ```bash
+   npm run db:seed
+   ```
+
+7. **Start development server**
+   ```bash
+   npm run dev
+   ```
 
 ## Superuser Credentials
 
@@ -97,6 +156,70 @@ After seeding, login with:
 
 ## Troubleshooting
 
+### Failed Migration Error (P3009)
+
+If you see: `Error: P3009 - migrate found failed migrations in the target database`
+
+This happens when a migration was started but failed, leaving the database in an inconsistent state.
+
+**Solution 1: Reset Migration State (Recommended for Fresh Setup)**
+
+Since you have no tables, the easiest solution is to reset the migration state:
+
+```bash
+# Connect to MySQL
+mysql -u root -p dashboard
+
+# Clear the failed migration state
+DELETE FROM _prisma_migrations WHERE migration_name = '20250115000000_fix_updated_at_columns';
+
+# Exit MySQL
+exit;
+```
+
+Then apply all migrations from scratch:
+
+```bash
+# This will create all tables and apply all migrations
+npx prisma migrate dev
+```
+
+**Solution 2: Use Prisma Migrate Dev (Easiest for Fresh Database)**
+
+If you have no tables, use `migrate dev` which will:
+- Create all tables from scratch
+- Apply all migrations in order
+- Handle the migration state automatically
+
+```bash
+npx prisma migrate dev
+```
+
+**Solution 3: Manual Reset (If Solutions 1 & 2 Don't Work)**
+
+1. Clear all migration records:
+```sql
+mysql -u root -p dashboard
+DELETE FROM _prisma_migrations;
+exit;
+```
+
+2. Apply the initial migration manually:
+```bash
+mysql -u root -p dashboard < prisma/migrations/20251110120045_init/migration.sql
+```
+
+3. Then apply the fix migration:
+```bash
+mysql -u root -p dashboard < prisma/migrations/20250115000000_fix_updated_at_columns/migration.sql
+```
+
+4. Mark migrations as applied:
+```bash
+npx prisma migrate resolve --applied 20251110120045_init
+npx prisma migrate resolve --applied 20250115000000_fix_updated_at_columns
+```
+
 ### Migration Already Applied
 If you see "Column already has default value", the migration was already applied. You can skip step 1.
 
@@ -105,9 +228,10 @@ If you see "Column already has default value", the migration was already applied
 - Check `.env` file has correct `DATABASE_URL`
 - Stop dev server before generating (files may be locked)
 
-### Seed Fails
-- Make sure migrations are applied first
+### Seed Fails - "Table does not exist"
+- **Make sure migrations are applied first** - Run `npx prisma migrate dev` to create all tables
 - Check database connection
+- Verify tables exist: `mysql -u root -p dashboard -e "SHOW TABLES;"`
 - Seed uses `upsert`, so safe to run multiple times
 
 ### updatedAt Still Missing Error

@@ -75,20 +75,37 @@ const Deviceregistration: React.FC = () => {
 
   const saveEdit = async () => {
     if (editId == null) return;
+    
+    // Validate inputs
+    if (!editName || !editName.trim()) {
+      toast.error("Camera name is required");
+      return;
+    }
+    
+    if (!editRtsp || !editRtsp.trim()) {
+      toast.error("RTSP link is required");
+      return;
+    }
+    
     try {
       const res = await fetch(`/api/flask/cameras/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName, rtsp_url: editRtsp }),
+        body: JSON.stringify({ name: editName.trim(), rtsp_url: editRtsp.trim() }),
       });
+      
+      const data = await res.json().catch(() => ({}));
+      
       if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(t || "Failed to update camera");
+        const errorMessage = data?.error || data?.message || `Failed to update camera (${res.status})`;
+        throw new Error(errorMessage);
       }
-      toast.success("Camera updated");
+      
+      toast.success(data?.message || "Camera updated successfully");
       cancelEdit();
       refetch();
     } catch (e: any) {
+      console.error("Error updating camera:", e);
       toast.error(e?.message || "Failed to update camera");
     }
   };
@@ -161,9 +178,9 @@ const Deviceregistration: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {(cameras || []).map((c) => (
+              {(cameras || []).map((c, index) => (
                 <tr key={c.id} className="border-b bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-dark-2 dark:text-gray-300 dark:hover:bg-gray-700">
-                  <td className="px-6 py-4">{c.id}</td>
+                  <td className="px-6 py-4">{index + 1}</td>
                   <td className="px-6 py-4">
                     {editId === c.id ? (
                       <input
