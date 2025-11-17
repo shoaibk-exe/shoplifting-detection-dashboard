@@ -19,7 +19,7 @@ type PythonCam = {
 };
 
 const CameraStats: React.FC = () => {
-  const [cams, setCams] = useState<Record<string, PythonCam>>({});
+  const [cams, setCams] = useState<PythonCam[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,12 +34,15 @@ const CameraStats: React.FC = () => {
       const res = await fetch('/api/camera-config', { cache: 'no-store' });
       const data = await res.json();
       if (data?.success && data?.cameras) {
-        setCams(data.cameras);
+        const normalized: PythonCam[] = Array.isArray(data.cameras)
+          ? data.cameras
+          : Object.values(data.cameras);
+        setCams(normalized as PythonCam[]);
       } else {
-        setCams({});
+        setCams([]);
       }
     } catch {
-      setCams({});
+      setCams([]);
     } finally {
       setLoading(false);
     }
@@ -56,7 +59,7 @@ const CameraStats: React.FC = () => {
     );
   }
 
-  const camEntries = Object.entries(cams); // [ ["Camera-1", {..}], ... ]
+  const camEntries = cams;
 
   return (
     <div className="space-y-6">
@@ -67,21 +70,55 @@ const CameraStats: React.FC = () => {
         </div>
       )}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
-        {camEntries.map(([name, cam]) => (
-          <div key={name} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        {camEntries.map((cam, index) => {
+          const fpsPercent =
+            typeof cam.fps_percentage === 'number'
+              ? cam.fps_percentage.toFixed(1)
+              : cam.configured_fps
+              ? ((cam.current_fps / cam.configured_fps) * 100).toFixed(1)
+              : '0';
+          const connectionQuality =
+            cam.connection_quality ||
+            (cam.connection_ok === true
+              ? 'Good'
+              : cam.connection_ok === false
+              ? 'Poor'
+              : cam.is_streaming
+              ? 'Active'
+              : 'Unknown');
+          const hasRecent = cam.has_recent_frames ?? cam.is_streaming ?? false;
+          const cameraLabel =
+            cam.camera_name ||
+            cam.cameraModel ||
+            cam.cameraLocation ||
+            `Camera ${cam.camera_db_id || cam.id || index + 1}`;
+          const statusText = (cam.status || (cam.is_streaming ? 'ONLINE' : cam.cameraStatus)) || 'UNKNOWN';
+          const statusUpper = statusText.toUpperCase();
+          const uptimeFormatted = (cam as any).uptime_formatted || cam?.continuous_uptime_formatted || '-';
+          const uptimeSeconds = (cam as any).uptime_seconds ?? cam?.continuous_uptime_seconds ?? '-';
+          const downtimeFormatted = cam.downtime_formatted || cam.continuous_downtime_formatted || '-';
+          const downtimeSeconds = cam.downtime_seconds ?? cam.continuous_downtime_seconds ?? '-';
+          const continuousUpFormatted = cam.continuous_uptime_formatted || '-';
+          const continuousUpSeconds = cam.continuous_uptime_seconds ?? '-';
+          const continuousDownFormatted = cam.continuous_downtime_formatted || '-';
+          const continuousDownSeconds = cam.continuous_downtime_seconds ?? '-';
+
+          return (
+          <div key={`${cameraLabel}-${index}`} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="text-sm text-gray-500 dark:text-gray-400">Camera</div>
-                <div className="text-xl font-semibold text-gray-900 dark:text-white">{cam.camera_name || name}</div>
+                <div className="text-xl font-semibold text-gray-900 dark:text-white">{cameraLabel}</div>
               </div>
               <div className="text-right">
                 <div className="text-sm text-gray-500 dark:text-gray-400">Status</div>
                 <div className={`text-sm font-semibold ${
-                  (cam.status || '').toUpperCase() === 'ONLINE' ? 'text-green-600 dark:text-green-400'
-                  : (cam.status || '').toUpperCase() === 'DEGRADED' ? 'text-yellow-600 dark:text-yellow-400'
+                  statusUpper === 'ONLINE' ? 'text-green-600 dark:text-green-400'
+                  : statusUpper === 'DEGRADED' ? 'text-yellow-600 dark:text-yellow-400'
+                  : statusUpper === 'ACTIVE' ? 'text-green-600 dark:text-green-400'
                   : 'text-red-600 dark:text-red-400'
                 }`}>
-                  {cam.status || 'UNKNOWN'}
+                  {statusText}
                 </div>
               </div>
             </div>
@@ -89,30 +126,38 @@ const CameraStats: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">Configured FPS</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{cam.configured_fps}</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{cam.configured_fps ?? '-'}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">Current FPS</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{cam.current_fps}</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{cam.current_fps ?? '-'}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">FPS %</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{cam.fps_percentage}%</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{fpsPercent !== '0' ? `${fpsPercent}%` : '-'}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">Connection</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{cam.connection_quality}</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{connectionQuality}</div>
               </div>
               <div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">Has Recent Frames</div>
-                <div className={`font-semibold ${cam.has_recent_frames ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {cam.has_recent_frames ? 'Yes' : 'No'}
+                <div className={`font-semibold ${hasRecent ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {hasRecent ? 'Yes' : 'No'}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">Live</div>
                 <div className="font-semibold text-gray-900 dark:text-white">
-                  {typeof cam.is_live === 'string' ? cam.is_live : cam.is_live ? 'ONLINE' : 'OFFLINE'}
+                  {typeof cam.is_live === 'string'
+                    ? cam.is_live
+                    : cam.is_streaming
+                    ? 'ONLINE'
+                    : cam.is_streaming === false
+                    ? 'OFFLINE'
+                    : cam.is_live
+                    ? 'ONLINE'
+                    : 'OFFLINE'}
                 </div>
               </div>
             </div>
@@ -120,27 +165,27 @@ const CameraStats: React.FC = () => {
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
                 <div className="text-xs text-gray-500 dark:text-gray-400">Continuous Uptime</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{cam.continuous_uptime_formatted}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{cam.continuous_uptime_seconds}s</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{continuousUpFormatted}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{continuousUpSeconds}s</div>
               </div>
               <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
                 <div className="text-xs text-gray-500 dark:text-gray-400">Continuous Downtime</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{cam.continuous_downtime_formatted}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{cam.continuous_downtime_seconds}s</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{continuousDownFormatted}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{continuousDownSeconds}s</div>
               </div>
               <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
                 <div className="text-xs text-gray-500 dark:text-gray-400">Uptime</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{(cam as any).uptime_formatted || '-'}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{(cam as any).uptime_seconds ?? '-'}s</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{uptimeFormatted}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{uptimeSeconds}s</div>
               </div>
               <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
                 <div className="text-xs text-gray-500 dark:text-gray-400">Downtime</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{cam.downtime_formatted}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{cam.downtime_seconds}s</div>
+                <div className="font-semibold text-gray-900 dark:text-white">{downtimeFormatted}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{downtimeSeconds}s</div>
               </div>
             </div>
           </div>
-        ))}
+        )})}
       </div>
     </div>
   );
