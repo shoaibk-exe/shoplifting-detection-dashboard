@@ -94,14 +94,8 @@ const CameraStats: React.FC = () => {
             `Camera ${cam.camera_db_id || cam.id || index + 1}`;
           const statusText = (cam.status || (cam.is_streaming ? 'ONLINE' : cam.cameraStatus)) || 'UNKNOWN';
           const statusUpper = statusText.toUpperCase();
-          const uptimeFormatted = (cam as any).uptime_formatted || cam?.continuous_uptime_formatted || '-';
-          const uptimeSeconds = (cam as any).uptime_seconds ?? cam?.continuous_uptime_seconds ?? '-';
-          const downtimeFormatted = cam.downtime_formatted || cam.continuous_downtime_formatted || '-';
-          const downtimeSeconds = cam.downtime_seconds ?? cam.continuous_downtime_seconds ?? '-';
-          const continuousUpFormatted = cam.continuous_uptime_formatted || '-';
-          const continuousUpSeconds = cam.continuous_uptime_seconds ?? '-';
-          const continuousDownFormatted = cam.continuous_downtime_formatted || '-';
-          const continuousDownSeconds = cam.continuous_downtime_seconds ?? '-';
+          const uptimeFormatted = (cam as any).uptime_formatted || '-';
+          const uptimeSeconds = (cam as any).uptime_seconds ?? '-';
 
           return (
           <div key={`${cameraLabel}-${index}`} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -162,26 +156,14 @@ const CameraStats: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Continuous Uptime</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{continuousUpFormatted}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{continuousUpSeconds}s</div>
-              </div>
-              <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Continuous Downtime</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{continuousDownFormatted}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{continuousDownSeconds}s</div>
-              </div>
+            <div className="mt-4 grid grid-cols-1 gap-4">
               <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
                 <div className="text-xs text-gray-500 dark:text-gray-400">Uptime</div>
                 <div className="font-semibold text-gray-900 dark:text-white">{uptimeFormatted}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{uptimeSeconds}s</div>
-              </div>
-              <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-900/30">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Downtime</div>
-                <div className="font-semibold text-gray-900 dark:text-white">{downtimeFormatted}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{downtimeSeconds}s</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <span className="text-green-500 font-semibold">↑</span>
+                  <span>{uptimeSeconds}s</span>
+                </div>
               </div>
             </div>
           </div>
