@@ -335,9 +335,9 @@ const SystemHealth: React.FC = () => {
       {cameraConfigData && Array.isArray(cameraConfigData.cameras) && cameraConfigData.cameras.length > 0 && (
         <div className="mt-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-4">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">
+            {/* <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">
               Camera Runtime Stats
-            </p>
+            </p> */}
             <div className="space-y-3">
               {cameraConfigData.cameras.map((camera: any) => (
                 <div key={camera.id} className="flex items-center justify-between text-sm border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0">
