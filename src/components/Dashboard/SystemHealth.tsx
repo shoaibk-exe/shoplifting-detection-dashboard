@@ -308,9 +308,7 @@ const SystemHealth: React.FC = () => {
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-              Overall System Health
-            </p>
+            
             {systemStatus ? (
               <>
                 <h3 className={`text-3xl font-bold ${getHealthColor(systemStatus.overallHealth)}`}>
