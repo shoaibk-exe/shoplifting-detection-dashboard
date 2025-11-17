@@ -81,31 +81,47 @@ const SystemHealth: React.FC = () => {
 
       if (cameraConfigData?.success) {
         const summary = cameraConfigData.summary || {};
-        const cameras = cameraConfigData.cameras || [];
+        const cameras = Array.isArray(cameraConfigData.cameras)
+          ? cameraConfigData.cameras
+          : [];
 
-        const totalFromSummary = Number(summary.total_cameras) || cameras.length || 0;
-        const liveFromSummary = Number(summary.live_cameras) || 0;
-        const offlineFromSummary = Number(summary.offline_cameras) || 0;
+        const countsFromData = cameras.reduce(
+          (acc: { total: number; live: number; offline: number; degraded: number }, camera: any) => {
+            acc.total += 1;
 
-        const total = totalFromSummary;
-        const live = Math.min(liveFromSummary, total);
-        const offline = Math.min(offlineFromSummary, total - live);
-        const degradedFromSummary = Math.max(total - live - offline, 0);
+            const rawStatus = (camera.status || camera.cameraStatus || '').toString().toUpperCase();
+            const isStreaming = camera.is_streaming === true;
+            const isExplicitOffline = rawStatus === 'OFFLINE' || rawStatus === 'INACTIVE';
+            const isExplicitDegraded = rawStatus === 'DEGRADED';
+            const isExplicitOnline = rawStatus === 'ONLINE' || rawStatus === 'ACTIVE';
 
-        const degradeFromData =
-          Array.isArray(cameras)
-            ? cameras.filter((c: any) => {
-                const status = (c.status || c.cameraStatus || '').toUpperCase();
-                if (status === 'OFFLINE') return false;
-                const streaming = c.is_streaming === true || c.status === 'ONLINE';
-                return !streaming;
-              }).length
-            : 0;
+            if (isExplicitOffline || (!isStreaming && !isExplicitOnline && !isExplicitDegraded)) {
+              acc.offline += 1;
+            } else if (isExplicitDegraded || (!isStreaming && isExplicitOnline)) {
+              acc.degraded += 1;
+            } else {
+              acc.live += 1;
+            }
 
-        const degraded =
+            return acc;
+          },
+          { total: 0, live: 0, offline: 0, degraded: 0 }
+        );
+
+        const totalFromSummary = Number(summary.total_cameras) || countsFromData.total;
+        const liveFromSummary = Number(summary.live_cameras) || countsFromData.live;
+        const offlineFromSummary = Number(summary.offline_cameras) || countsFromData.offline;
+        const degradedFromSummary =
           summary.degraded_cameras !== undefined
             ? Number(summary.degraded_cameras)
-            : Math.max(degradedFromSummary, degradeFromData);
+            : countsFromData.degraded;
+
+        const total = totalFromSummary || countsFromData.total;
+        const live = liveFromSummary || countsFromData.live;
+        const offline = offlineFromSummary || countsFromData.offline;
+        const degraded =
+          degradedFromSummary ||
+          Math.max(total - live - offline, countsFromData.degraded);
 
         const overallHealth =
           live >= total && total > 0
