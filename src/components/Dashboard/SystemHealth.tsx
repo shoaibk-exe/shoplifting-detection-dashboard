@@ -82,26 +82,41 @@ const SystemHealth: React.FC = () => {
       if (cameraConfigData?.success) {
         const summary = cameraConfigData.summary || {};
         const cameras = cameraConfigData.cameras || [];
-        
-        // Extract summary data from Python API
-        const total = summary.total_cameras || 0;
-        const live = summary.live_cameras || 0;
-        const streaming = summary.streaming_cameras || 0;
-        const offline = summary.offline_cameras || 0;
-        
-        // Calculate degraded: cameras that are not live but not offline (e.g., Inactive but not offline)
-        const degraded = Array.isArray(cameras) 
-          ? cameras.filter((c: any) => 
-              c.cameraStatus === 'Inactive' && c.is_streaming === false && c.cameraStatus !== 'OFFLINE'
-            ).length 
-          : 0;
-        
-        // Determine overall health
+
+        const totalFromSummary = Number(summary.total_cameras) || cameras.length || 0;
+        const liveFromSummary = Number(summary.live_cameras) || 0;
+        const offlineFromSummary = Number(summary.offline_cameras) || 0;
+
+        const total = totalFromSummary;
+        const live = Math.min(liveFromSummary, total);
+        const offline = Math.min(offlineFromSummary, total - live);
+        const degradedFromSummary = Math.max(total - live - offline, 0);
+
+        const degradeFromData =
+          Array.isArray(cameras)
+            ? cameras.filter((c: any) => {
+                const status = (c.status || c.cameraStatus || '').toUpperCase();
+                if (status === 'OFFLINE') return false;
+                const streaming = c.is_streaming === true || c.status === 'ONLINE';
+                return !streaming;
+              }).length
+            : 0;
+
+        const degraded =
+          summary.degraded_cameras !== undefined
+            ? Number(summary.degraded_cameras)
+            : Math.max(degradedFromSummary, degradeFromData);
+
         const overallHealth =
-          live === total && total > 0 ? 'HEALTHY' :
-          offline > 0 ? 'CRITICAL' :
-          degraded > 0 ? 'DEGRADED' : 
-          total === 0 ? 'OK' : 'DEGRADED';
+          live >= total && total > 0
+            ? 'HEALTHY'
+            : offline > 0
+            ? 'CRITICAL'
+            : degraded > 0
+            ? 'DEGRADED'
+            : total === 0
+            ? 'OK'
+            : 'DEGRADED';
 
         setSystemStatus({
           id: 0,
