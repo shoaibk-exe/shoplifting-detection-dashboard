@@ -18,6 +18,23 @@ type PythonCam = {
   status?: string;
 };
 
+const formatDuration = (seconds?: number | null) => {
+  if (typeof seconds !== "number" || Number.isNaN(seconds)) {
+    return "-";
+  }
+
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  const parts = [];
+  if (hrs) parts.push(`${hrs}h`);
+  if (mins) parts.push(`${mins}m`);
+  parts.push(`${secs}s`);
+
+  return parts.join(" ");
+};
+
 const CameraStats: React.FC = () => {
   const [cams, setCams] = useState<PythonCam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,8 +111,25 @@ const CameraStats: React.FC = () => {
             `Camera ${cam.camera_db_id || cam.id || index + 1}`;
           const statusText = (cam.status || (cam.is_streaming ? 'ONLINE' : cam.cameraStatus)) || 'UNKNOWN';
           const statusUpper = statusText.toUpperCase();
-          const uptimeFormatted = (cam as any).uptime_formatted || '-';
-          const uptimeSeconds = (cam as any).uptime_seconds ?? '-';
+          const uptimeSecondsRaw =
+            typeof (cam as any).uptime_seconds === 'number'
+              ? (cam as any).uptime_seconds
+              : typeof (cam as any).uptime_seconds === 'string'
+              ? Number((cam as any).uptime_seconds)
+              : typeof (cam as any).uptimeSeconds === 'number'
+              ? (cam as any).uptimeSeconds
+              : typeof cam.uptime_seconds === 'number'
+              ? cam.uptime_seconds
+              : null;
+
+          const uptimeFormatted =
+            (cam as any).uptime_formatted ||
+            formatDuration(uptimeSecondsRaw);
+
+          const uptimeSecondsDisplay =
+            typeof uptimeSecondsRaw === 'number' && !Number.isNaN(uptimeSecondsRaw)
+              ? `${uptimeSecondsRaw.toFixed(1)}s`
+              : '-';
 
           return (
           <div key={`${cameraLabel}-${index}`} className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -162,7 +196,7 @@ const CameraStats: React.FC = () => {
                 <div className="font-semibold text-gray-900 dark:text-white">{uptimeFormatted}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                   <span className="text-green-500 font-semibold">↑</span>
-                  <span>{uptimeSeconds}s</span>
+                  <span>{uptimeSecondsDisplay}</span>
                 </div>
               </div>
             </div>
