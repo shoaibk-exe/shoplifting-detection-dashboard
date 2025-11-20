@@ -11,9 +11,9 @@ const SyncButton: React.FC = () => {
       setSyncing(true);
       setError(null);
       
-      // Just trigger refresh - data is fetched directly from Python API
+    
       setLastSync(new Date());
-      // Trigger a custom event to refresh components
+     
       window.dispatchEvent(new CustomEvent('systemDataSynced'));
     } catch (err: any) {
       setError(err.message || 'Error refreshing data');

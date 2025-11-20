@@ -37,11 +37,16 @@ const formatDuration = (seconds?: number | null) => {
 
 const CameraStats: React.FC = () => {
   const [cams, setCams] = useState<PythonCam[]>([]);
+  const [cameraNameMap, setCameraNameMap] = useState<Record<string | number, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
-    const id = setInterval(fetchData, 30000);
+    fetchCameraNames();
+    const id = setInterval(() => {
+      fetchData();
+      fetchCameraNames();
+    }, 30000);
     return () => clearInterval(id);
   }, []);
 
@@ -62,6 +67,33 @@ const CameraStats: React.FC = () => {
       setCams([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCameraNames = async () => {
+    try {
+      const res = await fetch('/api/flask/cameras', { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('Failed to fetch camera names');
+      }
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.cameras)) {
+        const map: Record<string | number, string> = {};
+        data.cameras.forEach((camera: any, index: number) => {
+          const id = camera.id ?? camera.cameraId ?? camera.camera_db_id ?? index + 1;
+          if (id !== undefined && id !== null) {
+            map[id] =
+              camera.cameraModel ||
+              camera.cameraLocation ||
+              camera.name ||
+              camera.label ||
+              `Camera ${id}`;
+          }
+        });
+        setCameraNameMap(map);
+      }
+    } catch (error) {
+      console.debug('Unable to refresh camera names for camera stats', error);
     }
   };
 
@@ -104,11 +136,14 @@ const CameraStats: React.FC = () => {
               ? 'Active'
               : 'Unknown');
           const hasRecent = cam.has_recent_frames ?? cam.is_streaming ?? false;
+          const dbId = (cam as any).camera_db_id ?? cam.id ?? index + 1;
           const cameraLabel =
-            cam.camera_name ||
-            cam.cameraModel ||
-            cam.cameraLocation ||
-            `Camera ${cam.camera_db_id || cam.id || index + 1}`;
+            (dbId !== undefined && dbId !== null && cameraNameMap[dbId])
+              ? cameraNameMap[dbId]
+              : cam.camera_name ||
+                cam.cameraModel ||
+                cam.cameraLocation ||
+                `Camera ${dbId}`;
           const statusText = (cam.status || (cam.is_streaming ? 'ONLINE' : cam.cameraStatus)) || 'UNKNOWN';
           const statusUpper = statusText.toUpperCase();
           const uptimeSecondsRaw =

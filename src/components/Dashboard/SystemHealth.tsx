@@ -17,24 +17,29 @@ const SystemHealth: React.FC = () => {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [cameraConfigData, setCameraConfigData] = useState<any>(null);
+  const [cameraNameMap, setCameraNameMap] = useState<Record<string | number, string>>({});
 
   useEffect(() => {
     fetchSystemHealth();
+    fetchCameraNames();
     
     // Auto-refresh interval: 30000ms = 30 seconds
     // To change: modify the number below (value is in milliseconds)
     const interval = setInterval(() => {
       fetchSystemHealth();
+      fetchCameraNames();
     }, 30000);
 
     const handleSync = () => {
       // Refresh data when sync event is triggered
       fetchSystemHealth();
+      fetchCameraNames();
     };
 
     // Listen for global refresh event
     const handleGlobalRefresh = () => {
       fetchSystemHealth();
+      fetchCameraNames();
     };
 
     window.addEventListener('systemDataSynced', handleSync);
@@ -46,6 +51,33 @@ const SystemHealth: React.FC = () => {
       window.removeEventListener('dashboardRefresh', handleGlobalRefresh);
     };
   }, []);
+
+  const fetchCameraNames = async () => {
+    try {
+      const res = await fetch('/api/flask/cameras', { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('Failed to fetch camera names');
+      }
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.cameras)) {
+        const map: Record<string | number, string> = {};
+        data.cameras.forEach((camera: any, index: number) => {
+          const id = camera.id ?? camera.cameraId ?? camera.camera_db_id ?? index + 1;
+          if (id !== undefined && id !== null) {
+            map[id] =
+              camera.cameraModel ||
+              camera.cameraLocation ||
+              camera.name ||
+              camera.label ||
+              `Camera ${id}`;
+          }
+        });
+        setCameraNameMap(map);
+      }
+    } catch (error) {
+      console.debug('Unable to refresh camera names from database', error);
+    }
+  };
 
   const fetchSystemHealth = async () => {
     try {
@@ -368,11 +400,20 @@ const SystemHealth: React.FC = () => {
               Camera Runtime Stats
             </p> */}
             <div className="space-y-3">
-              {cameraConfigData.cameras.map((camera: any) => (
-                <div key={camera.id} className="flex items-center justify-between text-sm border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0">
+              {cameraConfigData.cameras.map((camera: any, index: number) => {
+                const dbId = camera.camera_db_id ?? camera.id ?? index + 1;
+                const fallbackName =
+                  camera.camera_name ||
+                  camera.cameraModel ||
+                  camera.cameraLocation ||
+                  `Camera ${dbId || 'Unknown'}`;
+                const resolvedName =
+                  (dbId !== undefined && dbId !== null && cameraNameMap[dbId]) ? cameraNameMap[dbId] : fallbackName;
+                return (
+                <div key={`${dbId}-${index}`} className="flex items-center justify-between text-sm border-b border-gray-200 dark:border-gray-700 pb-3 last:border-0">
                   <div className="flex items-center gap-3">
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {camera.camera_name || camera.cameraModel || camera.cameraLocation || `Camera ${camera.id || 'Unknown'}`}
+                      {resolvedName}
                     </span>
                     <span className={`px-2 py-1 rounded text-xs ${
                       camera.is_streaming 
@@ -390,7 +431,7 @@ const SystemHealth: React.FC = () => {
                     </span>
                   )}
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         </div>

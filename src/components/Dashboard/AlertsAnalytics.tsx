@@ -30,7 +30,7 @@ const AlertsAnalytics: React.FC = () => {
         const alerts = data.alerts;
         const total = alerts.length;
 
-        // Group by camera
+       
         const cameraMap = alerts.reduce((acc: any, alert: any) => {
           const cameraName = alert.camera?.cameraModel || `Camera-${alert.camera_num}`;
           acc[cameraName] = (acc[cameraName] || 0) + 1;
