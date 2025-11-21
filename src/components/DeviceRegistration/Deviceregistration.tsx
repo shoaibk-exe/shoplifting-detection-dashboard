@@ -9,6 +9,7 @@ const Deviceregistration: React.FC = () => {
   const [name, setName] = useState<string>("");
   const [rtsp, setRtsp] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
 
   const { cameras, loading: listLoading, error, refetch } = useFlaskCameras(15000);
 
@@ -36,6 +37,28 @@ const Deviceregistration: React.FC = () => {
       toast.error(e?.message || "Failed to add camera");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusToggle = async (id: number, nextActive: boolean) => {
+    try {
+      setStatusUpdatingId(id);
+      const res = await fetch(`/api/flask/cameras/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextActive ? "Active" : "Offline" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        const message = data?.error || data?.message || "Failed to update status";
+        throw new Error(message);
+      }
+      toast.success(nextActive ? "Camera marked Active" : "Camera marked Offline");
+      refetch();
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to update camera status");
+    } finally {
+      setStatusUpdatingId(null);
     }
   };
 
@@ -207,14 +230,38 @@ const Deviceregistration: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-semibold ${c.status === "Active"
-                        ? "bg-green-100 text-green-800 dark:bg-gray-dark dark:text-green-800"
-                        : "bg-red-100 text-red-800 dark:bg-gray-dark dark:text-red-800"
-                        }`}
-                    >
-                      {c.status}
-                    </span>
+                    {(() => {
+                      const normalizedStatus = (c.status || "").trim().toLowerCase();
+                      const isActive = normalizedStatus === "active";
+                      return (
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                              isActive
+                                ? "bg-green-100 text-green-800 dark:bg-gray-dark dark:text-green-400"
+                                : "bg-red-100 text-red-800 dark:bg-gray-dark dark:text-red-400"
+                            }`}
+                          >
+                            {c.status || "Unknown"}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={statusUpdatingId === c.id}
+                            onClick={() => handleStatusToggle(c.id, !isActive)}
+                            className={`relative inline-flex h-6 w-12 items-center rounded-full transition ${
+                              isActive ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+                            } ${statusUpdatingId === c.id ? "opacity-70 cursor-not-allowed" : ""}`}
+                            aria-pressed={isActive}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                                isActive ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4">
                     {editId === c.id ? (
