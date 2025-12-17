@@ -45,6 +45,17 @@ const menuGroups = [
       },
       {
         icon: (
+          <Icons.videoCam />
+        ),
+        label: "Live Cameras",
+        route: "#",
+        children: [
+          { label: "Add Live Camera", route: routes.LiveCameras.Add },
+          { label: "View All Cameras", route: routes.LiveCameras.View },
+        ],
+      },
+      {
+        icon: (
           <Icons.bookmarks />
         ),
         label: "Anomaly Detection",

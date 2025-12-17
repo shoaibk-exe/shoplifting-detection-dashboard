@@ -76,7 +76,8 @@ model Camera{
   cameraLocation String
   cameraStatus String @default("Active")
   autoFlash Boolean? @default(false)
-  cameraVoice Boolean? @default(false) 
+  cameraVoice Boolean? @default(false)
+  rtspUrl String? 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt 
   videoRecording VideoRecording[]

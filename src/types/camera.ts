@@ -8,6 +8,7 @@ export interface Camera {
     cameraStatus: string;
     autoFlash?: boolean;
     cameraVoice?: boolean;
+    rtspUrl?: string;
     createdAt?: string;
     updatedAt?: string;
     videoRecording?: string[];

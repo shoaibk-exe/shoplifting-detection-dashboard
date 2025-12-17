@@ -17,5 +17,9 @@ export const routes = {
     Camera: {
         AddCamera: '/manage-devices/add',
         ListOfCameras: '/manage-devices',
+    },
+    LiveCameras: {
+        Add: '/live-cameras/add',
+        View: '/live-cameras/view',
     }
 };
