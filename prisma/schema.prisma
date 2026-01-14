@@ -52,49 +52,6 @@ model camera {
   cameraUsername String
   cameraPassword String
   cameraLocation String
-<<<<<<< HEAD
-  cameraStatus String @default("Active")
-  autoFlash Boolean? @default(false)
-  cameraVoice Boolean? @default(false)
-  rtspUrl String? 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt 
-  videoRecording VideoRecording[]
-  anomaly_logs anomaly_logs[] 
-}
-// const anomaly_details = [ 
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-// ]
-model anomaly_logs{
-  id Int @id @default(autoincrement())
-  anomaly_details Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  // anomaly_category String
-  // anomaly_time String
-  // anomaly_score Float
-  cameraId Int
-  camera Camera @relation(fields: [cameraId], references: [id])
-=======
   cameraStatus   String           @default("Active")
   autoFlash      Boolean?         @default(false)
   cameraVoice    Boolean?         @default(false)
@@ -104,7 +61,6 @@ model anomaly_logs{
   alerts         Alert[]
   anomaly_logs   anomaly_logs[]
   videorecording videorecording[]
->>>>>>> 66cf8efdd7294a591b61b74bd1e5631b29b8139a
 }
 
 model gpuinfo {
