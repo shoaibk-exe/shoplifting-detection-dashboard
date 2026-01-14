@@ -1,8 +1,8 @@
+"use client";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 
 const SignupWithPassword = () => {
   const [data, setData] = useState({
@@ -30,7 +30,9 @@ const SignupWithPassword = () => {
     if (!name.trim() || !email || !password || !reEnterPassword) {
       return toast.error("Please fill in all fields!");
     }
-
+    if (password !== reEnterPassword) {
+      return toast.error("Passwords do not match!");
+    }
     setLoading(true);
 
     try {
@@ -41,8 +43,8 @@ const SignupWithPassword = () => {
         reEnterPassword,
       });
 
-      if (res.status === 200) {
-        toast.success("User has been registered");
+      if (res.status === 200 || res.status === 201) {
+        toast.success("Account created successfully! Please sign in.");
         setData({
           name: "",
           email: "",
@@ -50,23 +52,13 @@ const SignupWithPassword = () => {
           reEnterPassword: "",
         });
         setLoading(false);
-        signIn("credentials", { ...data, redirect: false }).then((callback) => {
-          if (callback?.error) {
-            toast.error(callback.error);
-            setLoading(false);
-          }
-
-          if (callback?.ok && !callback?.error) {
-            setLoading(false);
-            router.push("/");
-          }
-        });
+        router.push("/auth/signin");
       } else {
-        toast.error(res.data);
+        toast.error(res.data?.message || "Something went wrong");
         setLoading(false);
       }
     } catch (error: any) {
-      toast.error(error.response.data);
+      toast.error(error.response.data?.message || "Something went wrong");
       setLoading(false);
       return;
     }
