@@ -21,7 +21,8 @@ export default function RootLayout({
   // const pathname = usePathname();
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 1000);
+    // Reduced loading time for faster initial render
+    setTimeout(() => setLoading(false), 300);
   }, []);
 
   return (

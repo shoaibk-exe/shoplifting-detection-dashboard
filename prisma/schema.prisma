@@ -1,79 +1,58 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-datasource db {
-  provider          = "mysql"
-  url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // Only needed when using a cloud provider that doesn't support the creation of new databases, like Heroku. Learn more: https://pris.ly/d/migrate-shadow
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id                   Int      @id @default(autoincrement())
-  email                String   @unique
-  name                 String
-  password             String
-  roleId               Int
-  role                 Role     @relation(fields: [roleId], references: [id]) // This defines the relation to Role
-  profilePicture       String?  @db.VarChar(300)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  passwordResetToken   String?
-  phoneNumber          String
-  status               String
-  passwordResetTokenExp DateTime?
-  sessions             Session[]
-  apiKeys              ApiKey[]
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-model Role {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String?
-  permissions Json
-  role        String   @unique
-  users       User[]   // This defines the reverse relation to User
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Alert {
+  id           Int      @id @default(autoincrement())
+  alert_number String
+  date         DateTime @default(now())
+  time         String
+  alert_link   String?
+  camera_num   Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  camera       camera   @relation(fields: [camera_num], references: [id])
+
+  @@index([camera_num], map: "alerts_camera_num_fkey")
+  @@map("alerts")
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       Int
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model anomaly_logs {
+  id              Int      @id @default(autoincrement())
+  anomaly_details Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  cameraId        Int
+  camera          camera   @relation(fields: [cameraId], references: [id])
+
+  @@index([cameraId], map: "anomaly_logs_cameraId_fkey")
 }
 
-
-model ApiKey {
-  id        String   @id @default(cuid())
+model apikey {
+  id        String   @id
   key       String
-  name      String   @unique
+  name      String   @unique(map: "ApiKey_name_key")
   userId    Int
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "ApiKey_userId_fkey")
+
+  @@index([userId], map: "ApiKey_userId_fkey")
 }
 
-model VerificationToken {
-  id         String   @id @default(cuid())
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-model Camera{
-  id Int @id @default(autoincrement())
-  cameraModel String
-  cameraIp String
+model camera {
+  id             Int              @id @default(autoincrement())
+  cameraModel    String
+  cameraIp       String
   cameraUsername String
   cameraPassword String
   cameraLocation String
+<<<<<<< HEAD
   cameraStatus String @default("Active")
   autoFlash Boolean? @default(false)
   cameraVoice Boolean? @default(false)
@@ -115,16 +94,100 @@ model anomaly_logs{
   // anomaly_score Float
   cameraId Int
   camera Camera @relation(fields: [cameraId], references: [id])
+=======
+  cameraStatus   String           @default("Active")
+  autoFlash      Boolean?         @default(false)
+  cameraVoice    Boolean?         @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now()) @updatedAt
+  processedUrl   String?
+  alerts         Alert[]
+  anomaly_logs   anomaly_logs[]
+  videorecording videorecording[]
+>>>>>>> 66cf8efdd7294a591b61b74bd1e5631b29b8139a
 }
 
-model VideoRecording{
-  id Int @id @default(autoincrement())
-  cameraId Int
-  camera Camera @relation(fields: [cameraId], references: [id])
-  cameraIp String?
+model gpuinfo {
+  id                 Int      @id @default(autoincrement())
+  utilizationPercent Float
+  memoryStatus       String
+  allocatedGB        Float
+  reservedGB         Float
+  available          Boolean
+  createdAt          DateTime @default(now())
+}
+
+model role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique(map: "Role_name_key")
+  description String?
+  permissions Json
+  role        String   @unique(map: "Role_role_key")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        user[]
+}
+
+model session {
+  id           String   @id
+  sessionToken String   @unique(map: "Session_sessionToken_key")
+  userId       Int
+  expires      DateTime
+  user         user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Session_userId_fkey")
+
+  @@index([userId], map: "Session_userId_fkey")
+}
+
+model systemstatus {
+  id               Int      @id @default(autoincrement())
+  totalCameras     Int
+  liveCamerasCount Int
+  degradedCount    Int
+  offlineCount     Int
+  overallHealth    String
+  statusSummary    String
+  timestamp        DateTime @default(now())
+}
+
+model user {
+  id                    Int       @id @default(autoincrement())
+  email                 String    @unique(map: "User_email_key")
+  name                  String
+  password              String
+  roleId                Int
+  profilePicture        String?   @db.VarChar(300)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  passwordResetToken    String?
+  phoneNumber           String
+  status                String
+  passwordResetTokenExp DateTime?
+  apikey                apikey[]
+  session               session[]
+  role                  role      @relation(fields: [roleId], references: [id], map: "User_roleId_fkey")
+
+  @@index([roleId], map: "User_roleId_fkey")
+}
+
+model verificationtoken {
+  id         String   @id
+  identifier String
+  token      String   @unique(map: "VerificationToken_token_key")
+  expires    DateTime
+
+  @@unique([identifier, token], map: "VerificationToken_identifier_token_key")
+}
+
+model videorecording {
+  id             Int      @id @default(autoincrement())
+  cameraId       Int
+  cameraIp       String?
   cameraLocation String?
-  cameraStatus String?
-  recordingURL String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  cameraStatus   String?
+  recordingURL   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  camera         camera   @relation(fields: [cameraId], references: [id], map: "VideoRecording_cameraId_fkey")
+
+  @@index([cameraId], map: "VideoRecording_cameraId_fkey")
 }

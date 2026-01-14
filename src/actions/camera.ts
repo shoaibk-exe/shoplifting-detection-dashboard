@@ -28,93 +28,64 @@
 //     }
 // }
 
+'use server'
 
-
+// Register new camera
 export const RegisterCamera = async (data: any) => {
     try {
-        const res = await fetch('/api/cameras', {
-            cache: 'no-store',
+        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/cameras`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify(data)
-        });
-        const resData = await res.json();
-        return { ...resData, status: res.status };
-    } catch (error) {
-        console.log(error);
-        return {
-            message: 'Something went wrong!',
-            status: 500,
-        };
-    }
-}
-export const deleteCamera = async (id: string) => {
-    try {
-        const res = await fetch(`/api/cameras`, {
-            cache: 'no-store',
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ id })
+            body: JSON.stringify(data),
         });
 
-        const resData = await res.json();
-        return { ...resData, status: res.status };
+        const result = await response.json();
+        return { status: response.status, message: result.message };
     } catch (error) {
-        console.log(error);
-        return {
-            message: 'Something went wrong!',
-            status: 500,
-        }
+        console.error('Error registering camera:', error);
+        return { status: 500, message: 'Failed to register camera' };
     }
 }
 
-export const getCamera = async (filters?: any) => {
-    let url = `/api/cameras?`
-    if (filters.videoRecording) {
-        url += `videoRecording=${filters.videoRecording}&`
-    }
-    if (filters.anomaly_logs) {
-        url += `anomaly_logs=${filters.anomaly_logs}&`
-    }
+// Update existing camera
+export const UpdateCamera = async (data: { id: string; data: any }) => {
     try {
-        const res = await fetch(url, {
-            cache: 'no-store',
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            next: { revalidate: 0 },
-        })
-        const resData = await res.json();
-        return { ...resData, status: res.status };
-    } catch (error) {
-        console.log(error);
-        return {
-            message: 'Something went wrong!',
-            status: 500,
-        };
-    }
-};
-
-export const UpdateCamera = async (id: string, data: any) => {
-    try {
-        const res = await fetch('/api/cameras', {
+        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/cameras`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ id, data })
+            body: JSON.stringify({
+                id: data.id,
+                data: data.data
+            }),
         });
-        const resData = await res.json();
-        return { ...resData, status: res.status };
+
+        const result = await response.json();
+        return { status: response.status, message: result.message };
     } catch (error) {
-        return {
-            message: 'Something went wrong!',
-            status: 500,
-        };
+        console.error('Error updating camera:', error);
+        return { status: 500, message: 'Failed to update camera' };
     }
-};
+}
+
+// Delete camera
+export const deleteCamera = async (id: string) => {
+    try {
+        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/cameras`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id }),
+        });
+
+        const result = await response.json();
+        return { status: response.status, message: result.message };
+    } catch (error) {
+        console.error('Error deleting camera:', error);
+        return { status: 500, message: 'Failed to delete camera' };
+    }
+}

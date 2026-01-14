@@ -64,13 +64,13 @@ const AddUsersForm = ({ renderFrom, UserData, setModalOpen, handleUpdateUser }: 
             }
             else {
                 const { status, message } = await RegisterUser(userData)
-                if (status !== 200) {
-                    setLoading(false)
-                    toast.error(message)
-                } else {
+                if (status >= 200 && status < 300) {
                     setLoading(false)
                     toast.success(message)
                     setUserData(User)
+                } else {
+                    setLoading(false)
+                    toast.error(message)
                 }
             }
         }
@@ -136,8 +136,6 @@ const AddUsersForm = ({ renderFrom, UserData, setModalOpen, handleUpdateUser }: 
                                 name="email"
                                 value={userData.email}
                                 onChange={HandleOnChange}
-                                disable={renderFrom === renderingComp.Users.Edit ? true : false}
-
                             />
                         </div>
                         <div className="col-span-6">
@@ -150,7 +148,6 @@ const AddUsersForm = ({ renderFrom, UserData, setModalOpen, handleUpdateUser }: 
                                 name="phoneNumber"
                                 value={userData.phoneNumber}
                                 onChange={HandleOnChange}
-                                disable={renderFrom === renderingComp.Users.Edit ? true : false}
                             />
                         </div>
                         <div className="col-span-6 mb-5.5">

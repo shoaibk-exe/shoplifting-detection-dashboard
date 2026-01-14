@@ -1,25 +1,31 @@
 "use client";
 
 import { useSession } from "next-auth/react";
+import { useMemo } from "react";
 
 const useHasAccess = (permission: string | string[]) => {
-    if (typeof permission === "string") {
-        permission = [permission];
-    }
-    const { data: session } = useSession() as any;
-    if (!session) {
-        return false;
-    }
-    const allowedPermissions = session?.user?.role?.permissions;
-    const allow = permission.filter((permission) => {
-        if (allowedPermissions?.includes(permission)) {
-            return true;
+    const { data: session, status } = useSession() as any;
+    
+    return useMemo(() => {
+        // If session is loading, return false to prevent flash
+        if (status === "loading") {
+            return false;
         }
-        return false;
-    });
-    if (allow.length > 0) {
-        return true;
-    }
-    return false;
+        
+        if (!session) {
+            return false;
+        }
+
+        const permissionArray = typeof permission === "string" ? [permission] : permission;
+        const allowedPermissions = session?.user?.role?.permissions;
+        
+        if (!allowedPermissions || !Array.isArray(allowedPermissions)) {
+            return false;
+        }
+
+        // Check if any of the required permissions are in the allowed permissions
+        return permissionArray.some((perm) => allowedPermissions.includes(perm));
+    }, [session, permission, status]);
 };
+
 export default useHasAccess;

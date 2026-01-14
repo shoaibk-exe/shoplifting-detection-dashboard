@@ -114,7 +114,7 @@ const DataTableForUsers = ({ users, loading }: DataTableForUsersProps) => {
                                         Name
                                     </th>
                                     <th scope="col" className="px-6 py-3">
-                                        Emaile
+                                        Email
                                     </th>
                                     <th scope="col" className="px-6 py-3">
                                         Contact Number

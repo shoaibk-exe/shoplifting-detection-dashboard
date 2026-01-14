@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 //   description: "This is Dashboard page for Alf Vision Dashboard",
 // };
 
+// Client component - no caching needed
 export default function Home() {
 
 

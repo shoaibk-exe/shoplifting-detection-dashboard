@@ -13,6 +13,10 @@ import { Access_Scope } from "@/helper/constants";
 import PermissionCheck from "@/app/(site)/permission-check";
 import lightLogo from "../../../public/images/background/logo.png"
 import { signOut } from "next-auth/react";
+import { AlertTriangle, BellRing } from "lucide-react";
+
+
+
 interface SidebarProps {
   sidebarOpen: boolean;
   setSidebarOpen: (arg: boolean) => void;
@@ -61,12 +65,19 @@ const menuGroups = [
         label: "Anomaly Detection",
         route: "/anomaly-detection",
       },
+      // {
+      //   icon: (
+      //     <Icons.scan />
+      //   ),
+      //   label: "Saved Video",
+      //   route: "/saved-video",
+      // },
       {
         icon: (
-          <Icons.scan />
+          <AlertTriangle />
         ),
-        label: "Saved Video",
-        route: "/saved-video",
+        label: "ShopliftingAlerts",
+        route: "/shoplifting-alerts",
       },
       {
         icon: (

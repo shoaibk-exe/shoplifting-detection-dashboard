@@ -1,315 +1,301 @@
 "use client";
-import React, { ChangeEvent, useEffect, useState } from "react";
+import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "@/images/Icons";
-import { RegisterCamera } from "@/actions/camera";
 import toast from "react-hot-toast";
+import { useFlaskCameras } from "@/hooks/useFlaskCameras";
+
 const Deviceregistration: React.FC = () => {
-  const initialCamera = {
-    cameraModel: "",
-    cameraIp: "",
-    cameraUsername: "",
-    cameraPassword: "",
-    cameraLocation: "",
-  }
-
-  const [camera, setCamera] = useState(initialCamera);
+  const [name, setName] = useState<string>("");
+  const [rtsp, setRtsp] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [dropdownOpen, setDropdownOpen] = useState({
-    model: false,
-    location: false,
-  });
+  const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
 
-  const toggleDropdown = (name: any, value: Boolean) => {
-    setDropdownOpen((prev) => {
-      return {
-        ...prev,
-        [name]: value,
-      };
-    });
-  };
-  const handleChange = (e: ChangeEvent | any) => {
-    const { name, value } = e.target as any;
-    setCamera(pre => {
-      return {
-        ...pre,
-        [name]: value
-      }
-    })
-  }
-  const cameraModels = ["Wyze", "CCTV", "TVs", "IP Camera", "ESP32s-CAM"]
-  const cameraLocations = ["Indoor", "Outdoor", "Office", "Home", "Hallway", "Store"]
+  const { cameras, loading: listLoading, error, refetch } = useFlaskCameras(15000);
+
   const onSubmit = async () => {
-    const { status, message } = await RegisterCamera(camera);
-    if (status !== 200) {
-      setLoading(false)
-      toast.error(message)
-    } else {
-      setLoading(false)
-      toast.success(message)
-      setCamera(initialCamera)
+    if (!name || !rtsp) {
+      toast.error("Please provide both name and RTSP link");
+      return;
     }
-  }
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/flask/cameras`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, rtsp_url: rtsp }),
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Failed to add camera");
+      }
+      toast.success("Camera added");
+      setName("");
+      setRtsp("");
+      refetch();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to add camera");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusToggle = async (id: number, nextActive: boolean) => {
+    try {
+      setStatusUpdatingId(id);
+      const res = await fetch(`/api/flask/cameras/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextActive ? "Active" : "Offline" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        const message = data?.error || data?.message || "Failed to update status";
+        throw new Error(message);
+      }
+      toast.success(nextActive ? "Camera marked Active" : "Camera marked Offline");
+      refetch();
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to update camera status");
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      const ok = confirm("Delete this camera?");
+      if (!ok) return;
+      const res = await fetch(`/api/flask/cameras/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Failed to delete camera");
+      }
+      toast.success("Camera deleted");
+      refetch();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to delete camera");
+    }
+  };
+
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState<string>("");
+  const [editRtsp, setEditRtsp] = useState<string>("");
+
+  const startEdit = (id: number, name: string, rtsp?: string) => {
+    setEditId(id);
+    setEditName(name);
+    setEditRtsp(rtsp || "");
+  };
+
+  const cancelEdit = () => {
+    setEditId(null);
+    setEditName("");
+    setEditRtsp("");
+  };
+
+  const saveEdit = async () => {
+    if (editId == null) return;
+    
+    // Validate inputs
+    if (!editName || !editName.trim()) {
+      toast.error("Camera name is required");
+      return;
+    }
+    
+    if (!editRtsp || !editRtsp.trim()) {
+      toast.error("RTSP link is required");
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/flask/cameras/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editName.trim(), rtsp_url: editRtsp.trim() }),
+      });
+      
+      const data = await res.json().catch(() => ({}));
+      
+      if (!res.ok) {
+        const errorMessage = data?.error || data?.message || `Failed to update camera (${res.status})`;
+        throw new Error(errorMessage);
+      }
+      
+      toast.success(data?.message || "Camera updated successfully");
+      cancelEdit();
+      refetch();
+    } catch (e: any) {
+      console.error("Error updating camera:", e);
+      toast.error(e?.message || "Failed to update camera");
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 p-12 gap-8 rounded-[10px] bg-white shadow-1 dark:bg-gray-dark dark:shadow-card  flex-row">
+    <div className="grid grid-cols-1 gap-8 rounded-[10px] bg-white p-6 shadow-1 dark:bg-gray-dark dark:shadow-card lg:grid-cols-3">
       <div className="col-span-1">
-        <div className="flex items-center justify-between text-1xl text-dark dark:text-white mb-3">
-          Camera Model
+        <div className="mb-3 flex items-center justify-between text-1xl text-dark dark:text-white">
+          Camera Name
         </div>
-        <div className="w-full relative mb-4 inline-block">
-          <button
-            onClick={() => {
-              const value = !dropdownOpen.model
-              toggleDropdown("model", value)
-            }}
-            className="w-full flex justify-between items-center gap-2.5 rounded-[7px] bg-primary border dark:border-dark-3 dark:bg-dark-2 dark:text-white-4 p-4 font-medium text-white hover:bg-opacity-95"
-          >
-            <Icons.camera />
-            {camera.cameraModel === "" ? "Select Camera Model" : camera.cameraModel}
-            <svg
-              className={`fill-current duration-200 ease-linear ${dropdownOpen.model && "rotate-180"
-                }`}
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M3.69344 7.09327C3.91808 6.83119 4.31265 6.80084 4.57472 7.02548L10.0013 11.6768L15.4279 7.02548C15.69 6.80084 16.0845 6.83119 16.3092 7.09327C16.5338 7.35535 16.5035 7.74991 16.2414 7.97455L10.4081 12.9745C10.174 13.1752 9.82862 13.1752 9.59457 12.9745L3.76124 7.97455C3.49916 7.74991 3.46881 7.35535 3.69344 7.09327Z"
-                fill=""
-              />
-            </svg>
-          </button>
-
-          {dropdownOpen.model && (
-            <div
-              className="absolute left-0 top-full z-40 mt-2 w-full rounded-[7px] border border-stroke bg-white py-3 shadow-card-4 dark:border-dark-3 dark:bg-dark-2 over"
-            >
-              <ul className="flex flex-col">
-                {
-                  cameraModels.map((item, index) => {
-                    const e = {
-                      target: {
-                        name: "cameraModel",
-                        value: item
-                      }
-                    }
-                    return (
-                      <li key={index} onClick={() => {
-                        handleChange(e)
-                        toggleDropdown("model", false)
-                      }}>
-                        <Link
-                          href="#"
-                          className="flex px-5 py-[7px] font-medium hover:bg-gray-2 hover:text-primary dark:hover:bg-dark-4 dark:hover:text-white"
-                        >
-                          {item}
-                        </Link>
-                      </li>
-                    )
-                  })
-                }
-              </ul>
-            </div>
-          )}
+        <div className="relative mb-4 w-full">
+          <input
+            type="text"
+            placeholder="e.g. Entrance Cam 1"
+            name="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full rounded-lg border border-stroke bg-transparent p-4 font-medium text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+          />
         </div>
       </div>
+
       <div className="col-span-1">
         <label
-          htmlFor="email"
-          className="flex items-center justify-between text-1xl text-dark dark:text-white mb-3"
+          htmlFor="rtsp"
+          className="mb-3 flex items-center justify-between text-1xl text-dark dark:text-white"
         >
-          Camera Ip
+          RTSP Link
         </label>
         <div className="relative">
           <input
-            type="email"
-            placeholder="Enter camera Ip"
-            name="cameraIp"
-            value={camera.cameraIp}
-            onChange={(e) => {
-              handleChange(e)
-            }}
-
+            id="rtsp"
+            type="text"
+            placeholder="rtsp://user:pass@ip:port/stream"
+            name="rtsp"
+            value={rtsp}
+            onChange={(e) => setRtsp(e.target.value)}
             className="w-full rounded-lg border border-stroke bg-transparent p-4 font-medium text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
           />
-
           <span className="absolute right-4.5 top-1/2 -translate-y-1/2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6v12m-7.5 0V6" />
             </svg>
           </span>
         </div>
-        <div className="text-right mt-5">
-          <label
-            htmlFor="name"
-            className="flex items-center justify-between text-1xl text-dark dark:text-white mb-3"
-          >
-            Username
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Enter your username"
-              name="cameraUsername"
-              value={camera.cameraUsername}
-              onChange={(e) => {
-                handleChange(e)
-              }}
-              className="w-full rounded-lg border border-stroke bg-transparent p-4 font-medium text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
-            />
-
-            <span className="absolute right-4.5 top-1/2 -translate-y-1/2">
-              <Icons.envalop />
-            </span>
-          </div>
-        </div>
-        <div className="hidden lg:block w-full text-center my-16">
-          <button onClick={() => { onSubmit() }} className="block w-full rounded-[5px] border border-primary bg-primary p-4 text-center font-medium text-white transition hover:bg-opacity-90">
+        <div className="mt-5 text-right">
+          <button onClick={onSubmit} className="block w-full rounded-[5px] border border-primary bg-primary p-4 text-center font-medium text-white transition hover:bg-opacity-90">
             Register Camera
-            {
-              loading && <span
-                className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-t-transparent dark:border-white dark:border-t-transparent`}
-              ></span>
-            }
+            {loading && (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-t-transparent dark:border-white dark:border-t-transparent"></span>
+            )}
           </button>
         </div>
       </div>
-      <div className="col-span-1">
-        <div className="flex items-center justify-between text-1xl text-dark dark:text-white mb-3">
-          Camera Location
-        </div>
-        <div className="w-full relative mb-4 inline-block">
-          <button
-            onClick={() => {
-              const value = !dropdownOpen.location
-              toggleDropdown("location", value)
-            }}
-            className="w-full flex justify-between items-center gap-2.5 rounded-[7px] bg-white border dark:border-dark-3 dark:bg-dark-2 dark:text-gray-4 p-4 font-medium text-gray-6 hover:bg-opacity-95"
-          >
-            <Icons.Globe />
-            {camera.cameraLocation === "" ? "Select Camera Location" : camera.cameraLocation}
-            <svg
-              className={`fill-current duration-200 ease-linear ${dropdownOpen.location && "rotate-180"
-                }`}
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M3.69344 7.09327C3.91808 6.83119 4.31265 6.80084 4.57472 7.02548L10.0013 11.6768L15.4279 7.02548C15.69 6.80084 16.0845 6.83119 16.3092 7.09327C16.5338 7.35535 16.5035 7.74991 16.2414 7.97455L10.4081 12.9745C10.174 13.1752 9.82862 13.1752 9.59457 12.9745L3.76124 7.97455C3.49916 7.74991 3.46881 7.35535 3.69344 7.09327Z"
-                fill=""
-              />
-            </svg>
-          </button>
 
-          {dropdownOpen.location && (
-            <div
-              className="absolute left-0 top-full z-40 mt-2 w-full rounded-[7px] border border-stroke bg-white py-3 shadow-card-4 dark:border-dark-3 dark:bg-dark-2 over"
-            >
-              <ul className="flex flex-col">
-                {
-                  cameraLocations.map((item, index) => {
-                    const e = {
-                      target: {
-                        name: "cameraLocation",
-                        value: item
-                      }
-                    }
-                    return (
-                      <li key={index} onClick={() => {
-                        handleChange(e)
-                        toggleDropdown("location", false)
-                      }}>
-                        <Link
-                          href="#"
-                          className="flex px-5 py-[7px] font-medium hover:bg-gray-2 hover:text-primary dark:hover:bg-dark-4 dark:hover:text-white"
-                        >
-                          {item}
-                        </Link>
-                      </li>
-                    )
-                  })
-                }
-                {/* <li>
-                  <Link
-                    href="#"
-                    className="flex px-5 py-[7px] font-medium hover:bg-gray-2 hover:text-primary dark:hover:bg-dark-4 dark:hover:text-white"
-                  >
-                    Indoor
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="#"
-                    className="flex px-5 py-[7px] font-medium hover:bg-gray-2 hover:text-primary dark:hover:bg-dark-4 dark:hover:text-white"
-                  >
-                    Outdoor
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="#"
-                    className="flex px-5 py-[7px] font-medium hover:bg-gray-2 hover:text-primary dark:hover:bg-dark-4 dark:hover:text-white"
-                  >
-                    Hallway
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="#"
-                    className="flex px-5 py-[7px] font-medium hover:bg-gray-2 hover:text-primary dark:hover:bg-dark-4 dark:hover:text-white"
-                  >
-                    Office
-                  </Link>
-                </li> */}
-              </ul>
-            </div>
-          )}
-        </div>
-        <div className="mt-1">
-          <label
-            htmlFor="text"
-            className="flex items-center justify-between text-1xl text-dark dark:text-white mb-3"
-          >
-            Password
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="6+ Characters, 1 Capital Letter"
-              name="cameraPassword"
-              value={camera.cameraPassword}
-              onChange={(e) => {
-                handleChange(e)
-              }}
-
-              className="w-full rounded-lg border border-stroke bg-transparent p-4 font-medium text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
-            />
-
-            <span className="absolute right-5 top-1/2 -translate-y-1/2">
-              <Icons.passwordLock />
-            </span>
+      <div className="col-span-1 lg:col-span-3">
+        <div className="relative overflow-x-auto sm:rounded-lg">
+          <div className="flex items-center justify-between pb-4">
+            <div className="font-semibold text-dark dark:text-white">Registered Devices</div>
+            {listLoading && <div className="text-sm text-gray-500">Refreshing…</div>}
           </div>
+          <table className="w-full text-left text-sm text-gray-500">
+            <thead className="border-b border-gray-300 bg-gray-50 text-xs uppercase text-gray-700 dark:border-gray-600 dark:bg-dark-2 dark:text-gray-300">
+              <tr>
+                <th className="px-6 py-3">ID</th>
+                <th className="px-6 py-3">Name</th>
+                <th className="px-6 py-3">Processed Stream</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(cameras || []).map((c, index) => (
+                <tr key={c.id} className="border-b bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-dark-2 dark:text-gray-300 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4">{index + 1}</td>
+                  <td className="px-6 py-4">
+                    {editId === c.id ? (
+                      <input
+                        className="w-full rounded border border-stroke bg-transparent p-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                      />
+                    ) : (
+                      c.name
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {editId === c.id ? (
+                      <input
+                        className="w-full rounded border border-stroke bg-transparent p-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+                        value={editRtsp}
+                        onChange={(e) => setEditRtsp(e.target.value)}
+                        placeholder="rtsp://..."
+                      />
+                    ) : (
+                      <a className="text-primary underline" href={c.processed_url} target="_blank" rel="noreferrer">
+                        {c.processed_url}
+                      </a>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const normalizedStatus = (c.status || "").trim().toLowerCase();
+                      const isActive = normalizedStatus === "active";
+                      return (
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                              isActive
+                                ? "bg-green-100 text-green-800 dark:bg-gray-dark dark:text-green-400"
+                                : "bg-red-100 text-red-800 dark:bg-gray-dark dark:text-red-400"
+                            }`}
+                          >
+                            {c.status || "Unknown"}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={statusUpdatingId === c.id}
+                            onClick={() => handleStatusToggle(c.id, !isActive)}
+                            className={`relative inline-flex h-6 w-12 items-center rounded-full transition ${
+                              isActive ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
+                            } ${statusUpdatingId === c.id ? "opacity-70 cursor-not-allowed" : ""}`}
+                            aria-pressed={isActive}
+                          >
+                            <span
+                              className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                                isActive ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-6 py-4">
+                    {editId === c.id ? (
+                      <div className="flex items-center space-x-3.5">
+                        <button className="hover:text-primary" onClick={saveEdit}>
+                          Save
+                        </button>
+                        <button className="hover:text-primary" onClick={cancelEdit}>
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-3.5">
+                        <button className="hover:text-primary" onClick={() => startEdit(c.id, c.name, c.rtsp_url)}>
+                          <Icons.edit />
+                        </button>
+                        <button className="hover:text-primary" onClick={() => handleDelete(c.id)}>
+                          <Icons.delete />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {cameras.length === 0 && !listLoading && (
+                <tr>
+                  <td className="px-6 py-6 text-center text-gray-500" colSpan={5}>
+                    No devices found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
-      <div className="block lg:hidden w-full text-center my-2" >
-        <button onClick={() => { onSubmit() }} className="block w-full rounded-[5px] border border-primary bg-primary p-4 text-center font-medium text-white transition hover:bg-opacity-90">
-          Register Camera
-          {
-            loading && <span
-              className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-t-transparent dark:border-white dark:border-t-transparent`}
-            ></span>
-          }
-        </button>
       </div>
     </div>
   );

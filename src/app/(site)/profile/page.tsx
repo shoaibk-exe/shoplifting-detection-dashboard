@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   description: "This is Profile page for Alf Vision Dashboard",
 };
 
+// Enable dynamic rendering for user-specific content
+export const dynamic = 'force-dynamic';
+
 const Profile = () => {
   return (
     <DefaultLayout>

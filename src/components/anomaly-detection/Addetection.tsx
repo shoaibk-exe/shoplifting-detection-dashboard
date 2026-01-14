@@ -53,11 +53,24 @@ const Addetection = () => {
     };
   }, []);
 
+  // useEffect(() => {
+  //   setCameraArr(cameraData)
+  //   setIsLoading(false)
+  //   console.log(camerasArr, cameraData)
+  // }, [cameraData])
+
+
+
   useEffect(() => {
-    setCameraArr(cameraData)
-    setIsLoading(false)
-    console.log(camerasArr, cameraData)
-  }, [cameraData])
+    if (Array.isArray(cameraData)) {
+      setCameraArr(cameraData);
+    } else {
+      setCameraArr([]); // fallback to empty array
+    }
+    setIsLoading(false);
+    console.log(cameraData);
+  }, [cameraData]);
+
 
 
   return (
