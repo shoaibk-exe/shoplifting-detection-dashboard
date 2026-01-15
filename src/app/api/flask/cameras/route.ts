@@ -11,8 +11,9 @@ function cameraToResponse(camera: any) {
   };
 }
 
-// Cache for 30 seconds
-export const revalidate = 30;
+// // Cache for 30 seconds
+// export const revalidate = 30;
+export const revalidate = 0;
 
 export async function GET() {
   try {
@@ -36,8 +37,16 @@ export async function GET() {
       count: cameras.length,
     });
 
-    // Add cache headers
-    response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60');
+    // // Add cache headers
+    // response.headers.set(
+    //   "Cache-Control",
+    //   "public, s-maxage=30, stale-while-revalidate=60",
+    // );
+
+        // Disable caching - always get fresh data
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
 
     return response;
   } catch (error: any) {
@@ -47,7 +56,7 @@ export async function GET() {
         success: false,
         error: "Failed to fetch cameras",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -60,7 +69,7 @@ export async function POST(req: NextRequest) {
     if (!name || !rtsp_url) {
       return NextResponse.json(
         { success: false, error: "Camera name and RTSP link are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -80,7 +89,7 @@ export async function POST(req: NextRequest) {
         success: true,
         camera: cameraToResponse(camera),
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("Failed to create camera:", error);
@@ -90,7 +99,7 @@ export async function POST(req: NextRequest) {
         error: "Failed to create camera",
         details: error?.message || error?.code || "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

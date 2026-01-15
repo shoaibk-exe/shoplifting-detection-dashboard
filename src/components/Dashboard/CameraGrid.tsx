@@ -1,46 +1,53 @@
 "use client";
-import React, { useEffect, useMemo, useState } from 'react';
-import CameraStream from '@/components/Camera/CameraStream';
-import { Camera } from '@/types/camera';
-import { useFlaskCameras } from '@/hooks/useFlaskCameras';
+import React, { useEffect, useMemo, useState } from "react";
+import CameraStream from "@/components/Camera/CameraStream";
+import { Camera } from "@/types/camera";
+import { useFlaskCameras } from "@/hooks/useFlaskCameras";
 
 const CameraGrid: React.FC = () => {
-  const { cameras: flaskCameras, loading, error, refetch } = useFlaskCameras(15000);
+  const {
+    cameras: flaskCameras,
+    loading,
+    error,
+    refetch,
+  } = useFlaskCameras(15000);
   const [streamStatus, setStreamStatus] = useState<Record<number, boolean>>({});
 
   const cameras: Camera[] = useMemo(() => {
     return (flaskCameras || []).map((c) => ({
-      id: c.id,
+      id: String(c.id),
       cameraModel: c.name || `Camera-${c.id}`,
       cameraLocation: c.name || `Camera-${c.id}`,
       // IMPORTANT: Use processed stream URL, not RTSP
-      cameraIp: c.processed_url || '',
-      cameraStatus: c.status || 'OFFLINE',
-      cameraUsername: '',
-      cameraPassword: '',
+      cameraIp: c.processed_url || "",
+      cameraStatus: c.status || "Offline",
+      cameraUsername: "",
+      cameraPassword: "",
     }));
   }, [flaskCameras]);
 
   const handleStreamStatusChange = (cameraId: number, isOnline: boolean) => {
-    setStreamStatus(prev => ({
+    setStreamStatus((prev) => ({
       ...prev,
-      [cameraId]: isOnline
+      [cameraId]: isOnline,
     }));
   };
 
   useEffect(() => {
     const onlineCameras = Object.values(streamStatus).filter(Boolean).length;
     const offlineCameras = cameras.length - onlineCameras;
-    window.dispatchEvent(new CustomEvent('cameraStreamStatus', {
-      detail: { streamStatus, onlineCameras, offlineCameras }
-    }));
+    window.dispatchEvent(
+      new CustomEvent("cameraStreamStatus", {
+        detail: { streamStatus, onlineCameras, offlineCameras },
+      }),
+    );
   }, [streamStatus, cameras.length]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-12 rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex items-center justify-center rounded-lg border border-gray-200 bg-white p-12 dark:border-gray-700 dark:bg-gray-800">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-b-2 border-blue-500"></div>
           <div className="text-lg font-semibold text-gray-900 dark:text-white">
             Loading cameras...
           </div>
@@ -52,13 +59,25 @@ const CameraGrid: React.FC = () => {
   if (error) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-800 dark:bg-red-900/20">
-        <svg className="w-16 h-16 mx-auto mb-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          className="mx-auto mb-4 h-16 w-16 text-red-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
-        <p className="text-red-800 dark:text-red-200 mb-4 font-semibold">{error}</p>
+        <p className="mb-4 font-semibold text-red-800 dark:text-red-200">
+          {error}
+        </p>
         <button
           onClick={refetch}
-          className="rounded-md bg-red-600 px-6 py-2 text-white hover:bg-red-700 transition-colors"
+          className="rounded-md bg-red-600 px-6 py-2 text-white transition-colors hover:bg-red-700"
         >
           Retry
         </button>
@@ -69,10 +88,20 @@ const CameraGrid: React.FC = () => {
   if (cameras.length === 0) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-12 text-center dark:border-gray-700 dark:bg-gray-800">
-        <svg className="w-20 h-20 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <svg
+          className="mx-auto mb-4 h-20 w-20 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
         </svg>
-        <p className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        <p className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
           No active cameras found
         </p>
         <p className="text-gray-600 dark:text-gray-400">
@@ -88,8 +117,9 @@ const CameraGrid: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Live Camera Feeds
         </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Real-time monitoring from {cameras.length} {cameras.length === 1 ? 'camera' : 'cameras'}
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          Real-time monitoring from {cameras.length}{" "}
+          {cameras.length === 1 ? "camera" : "cameras"}
         </p>
       </div>
 

@@ -45,24 +45,6 @@ model apikey {
   @@index([userId], map: "ApiKey_userId_fkey")
 }
 
-model camera {
-  id             Int              @id @default(autoincrement())
-  cameraModel    String
-  cameraIp       String
-  cameraUsername String
-  cameraPassword String
-  cameraLocation String
-  cameraStatus   String           @default("Active")
-  autoFlash      Boolean?         @default(false)
-  cameraVoice    Boolean?         @default(false)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @default(now()) @updatedAt
-  processedUrl   String?
-  alerts         Alert[]
-  anomaly_logs   anomaly_logs[]
-  videorecording videorecording[]
-}
-
 model gpuinfo {
   id                 Int      @id @default(autoincrement())
   utilizationPercent Float
@@ -131,69 +113,35 @@ model verificationtoken {
   token      String   @unique(map: "VerificationToken_token_key")
   expires    DateTime
 
-  @@unique([identifier, token])
+  @@unique([identifier, token], map: "VerificationToken_identifier_token_key")
 }
 
-model Camera{
-  id Int @id @default(autoincrement())
-  cameraModel String
-  cameraIp String
+model camera {
+  id             Int              @id @default(autoincrement())
+  cameraModel    String
+  cameraIp       String
   cameraUsername String
   cameraPassword String
   cameraLocation String
-  cameraStatus String @default("Active")
-  autoFlash Boolean? @default(false)
-  cameraVoice Boolean? @default(false)
-  rtspUrl String? 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt 
-  videoRecording VideoRecording[]
-  anomaly_logs anomaly_logs[] 
-}
-// const anomaly_details = [ 
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-//   {
-//     "anomaly_category": "Human",
-//     "anomaly_time": "2023-07-05 10:30:00",
-//     "anomaly_score": 0.85
-//   },
-// ]
-model anomaly_logs{
-  id Int @id @default(autoincrement())
-  anomaly_details Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  // anomaly_category String
-  // anomaly_time String
-  // anomaly_score Float
-  cameraId Int
-  camera Camera @relation(fields: [cameraId], references: [id])
+  cameraStatus   String           @default("Active")
+  autoFlash      Boolean?         @default(false)
+  cameraVoice    Boolean?         @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now())
+  processedUrl   String?
+  anomaly_logs   anomaly_logs[]
+  videorecording videorecording[]
 }
 
-model VideoRecording{
-  id Int @id @default(autoincrement())
-  cameraId Int
-  camera Camera @relation(fields: [cameraId], references: [id])
-  cameraIp String?
+model videorecording {
+  id             Int      @id @default(autoincrement())
+  cameraId       Int
+  cameraIp       String?
   cameraLocation String?
   cameraStatus   String?
   recordingURL   String
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime
   camera         camera   @relation(fields: [cameraId], references: [id], map: "VideoRecording_cameraId_fkey")
 
   @@index([cameraId], map: "VideoRecording_cameraId_fkey")

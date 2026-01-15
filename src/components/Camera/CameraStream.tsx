@@ -8,7 +8,10 @@ interface CameraStreamProps {
   onStatusChange?: (cameraId: number, isOnline: boolean) => void;
 }
 
-const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) => {
+const CameraStream: React.FC<CameraStreamProps> = ({
+  camera,
+  onStatusChange,
+}) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -19,13 +22,13 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
   const handleImageLoad = () => {
     setIsLoading(false);
     setError(false);
-    onStatusChange?.(camera.id, true);
+    onStatusChange?.(Number(camera.id), true);
   };
 
   const handleImageError = () => {
     setIsLoading(false);
     setError(true);
-    onStatusChange?.(camera.id, false);
+    onStatusChange?.(Number(camera.id), false);
   };
 
   const handleFullscreen = async () => {
@@ -50,8 +53,9 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
   return (
     <div
       ref={containerRef}
-      className={`relative rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden ${isFullscreen ? "z-50" : ""
-        }`}
+      className={`relative overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 ${
+        isFullscreen ? "z-50" : ""
+      }`}
     >
       {/* Header */}
       {!isFullscreen && (
@@ -66,9 +70,11 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
               </p>
               {/* Additional Camera Info */}
               {(camera as any).currentFps !== undefined && (
-                <div className="flex items-center gap-3 mt-2 text-xs">
+                <div className="mt-2 flex items-center gap-3 text-xs">
                   <span className="text-gray-500 dark:text-gray-400">
-                    FPS: {(camera as any).currentFps?.toFixed(1)}/{(camera as any).configuredFps} ({(camera as any).fpsPercentage?.toFixed(1)}%)
+                    FPS: {(camera as any).currentFps?.toFixed(1)}/
+                    {(camera as any).configuredFps} (
+                    {(camera as any).fpsPercentage?.toFixed(1)}%)
                   </span>
                   {(camera as any).continuousUptimeFormatted && (
                     <span className="text-green-600 dark:text-green-400">
@@ -86,21 +92,29 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
             <div className="flex items-center gap-2">
               <div
                 className={`h-2 w-2 rounded-full ${
-                  (camera as any).isLive || camera.cameraStatus === "ONLINE" || camera.cameraStatus === "LIVE"
+                  (camera as any).isLive ||
+                  camera.cameraStatus === "Active" ||
+                  camera.cameraStatus === "ONLINE" ||
+                  camera.cameraStatus === "LIVE"
                     ? "bg-green-500"
                     : camera.cameraStatus === "DEGRADED"
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
+                      ? "bg-yellow-500"
+                      : "bg-red-500"
                 }`}
               />
-              <span className={`text-xs font-medium ${
-                (camera as any).isLive || camera.cameraStatus === "ONLINE" || camera.cameraStatus === "LIVE"
-                  ? "text-green-600 dark:text-green-400"
-                  : camera.cameraStatus === "DEGRADED"
-                  ? "text-yellow-600 dark:text-yellow-400"
-                  : "text-red-600 dark:text-red-400"
-              }`}>
-                {camera.cameraStatus || "OFFLINE"}
+              <span
+                className={`text-xs font-medium ${
+                  (camera as any).isLive ||
+                  camera.cameraStatus === "Active" ||
+                  camera.cameraStatus === "ONLINE" ||
+                  camera.cameraStatus === "LIVE"
+                    ? "text-green-600 dark:text-green-400"
+                    : camera.cameraStatus === "DEGRADED"
+                      ? "text-yellow-600 dark:text-yellow-400"
+                      : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {camera.cameraStatus || "Offline"}
               </span>
             </div>
           </div>
@@ -109,23 +123,27 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
 
       {/* Stream Section */}
       <div
-        className="relative aspect-video bg-gray-900 cursor-pointer"
+        className="relative aspect-video cursor-pointer bg-gray-900"
         onClick={handleFullscreen}
       >
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-white text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
+            <div className="text-center text-white">
+              <div className="mx-auto mb-2 h-12 w-12 animate-spin rounded-full border-b-2 border-white"></div>
               <p>Loading stream...</p>
             </div>
           </div>
         )}
 
-        {(error || camera.cameraStatus === "OFFLINE" || camera.cameraStatus === "DEGRADED") && (
+        {/* Show offline overlay whenever status is Offline / OFFLINE / DEGRADED, or when stream errors */}
+        {(error ||
+          camera.cameraStatus === "Offline" ||
+          camera.cameraStatus === "OFFLINE" ||
+          camera.cameraStatus === "DEGRADED") && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-            <div className="text-center text-white p-4">
+            <div className="p-4 text-center text-white">
               <svg
-                className="w-16 h-16 mx-auto mb-4 text-red-500"
+                className="mx-auto mb-4 h-16 w-16 text-red-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -138,45 +156,54 @@ const CameraStream: React.FC<CameraStreamProps> = ({ camera, onStatusChange }) =
                 />
               </svg>
               <p className="mb-2 font-semibold">
-                {camera.cameraStatus === "OFFLINE"
+                {camera.cameraStatus === "Offline" ||
+                camera.cameraStatus === "OFFLINE"
                   ? "Camera Offline"
                   : camera.cameraStatus === "DEGRADED"
-                  ? "Camera Degraded"
-                  : "Failed to load stream"}
+                    ? "Camera Degraded"
+                    : "Failed to load stream"}
               </p>
               {(camera as any).statusDetail && (
-                <p className="text-sm text-gray-400 mb-2">{(camera as any).statusDetail}</p>
+                <p className="mb-2 text-sm text-gray-400">
+                  {(camera as any).statusDetail}
+                </p>
               )}
-              <p className="text-xs text-gray-500">Processed stream unavailable</p>
+              <p className="text-xs text-gray-500">
+                Processed stream unavailable
+              </p>
             </div>
           </div>
         )}
 
-        {/* Stream Image - Show processed stream only if we have a valid URL */}
-        {!error && Boolean(streamUrl) && (
-          <img
-            src={streamUrl}
-            alt={`${camera.cameraModel} stream`}
-            className="h-full w-full object-cover"
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-          />
-        )}
+        {/* Stream Image - only show when we have a URL AND status is Active/ONLINE/LIVE */}
+        {!error &&
+          Boolean(streamUrl) &&
+          (camera.cameraStatus === "Active" ||
+            camera.cameraStatus === "ONLINE" ||
+            camera.cameraStatus === "LIVE") && (
+            <img
+              src={streamUrl}
+              alt={`${camera.cameraModel} stream`}
+              className="h-full w-full object-cover"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+            />
+          )}
 
         {/* Fullscreen Minimize Button */}
         {isFullscreen && (
           <button
             onClick={handleFullscreen}
-            className="absolute top-3 right-3 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
+            className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
           >
-            <Minimize2 className="w-5 h-5" />
+            <Minimize2 className="h-5 w-5" />
           </button>
         )}
 
         {/* Expand Icon (visible only when not fullscreen) */}
         {!isFullscreen && !isLoading && !error && (
-          <div className="absolute top-3 right-3 bg-black/40 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition">
-            <Maximize2 className="w-5 h-5" />
+          <div className="absolute right-3 top-3 rounded-full bg-black/40 p-2 text-white opacity-0 transition group-hover:opacity-100">
+            <Maximize2 className="h-5 w-5" />
           </div>
         )}
       </div>
