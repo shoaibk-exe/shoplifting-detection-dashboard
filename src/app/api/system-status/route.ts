@@ -60,14 +60,14 @@ export async function GET(req: NextRequest) {
     const isAbort = error?.name === "AbortError";
     // Quiet fallback: avoid noisy console errors when Python API is down
     console.debug("system-status: Python API unavailable, falling back to OFFLINE state");
-    // Mark all cameras offline in DB
-    try {
-      await prisma.camera.updateMany({
-        data: { cameraStatus: "OFFLINE" },
-      });
-    } catch (e) {
-      console.error("Failed to set cameras OFFLINE:", e);
-    }
+    // // Mark all cameras offline in DB
+    // try {
+    //   await prisma.camera.updateMany({
+    //     data: { cameraStatus: "OFFLINE" },
+    //   });
+    // } catch (e) {
+    //   console.error("Failed to set cameras OFFLINE:", e);
+    // }
     // Derive counts from DB to avoid frontend errors
     try {
       const total = await prisma.camera.count();

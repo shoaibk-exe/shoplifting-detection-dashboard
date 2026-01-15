@@ -6,7 +6,7 @@ const PYTHON_API_BASE =
 // Support both /api/camera-config and /api/debug/camera_config
 const PYTHON_BACKEND_URL = `${PYTHON_API_BASE}/api/camera-config`;
 
-// Cache for 10 seconds (Python API data changes frequently)no 
+// Cache for 10 seconds (Python API data changes frequently)no
 export const revalidate = 10;
 
 // GET - Fetch camera config directly from Python API
@@ -87,13 +87,13 @@ export async function GET(req: NextRequest) {
 
     // Don't block on database update - do it in background if needed
     // Mark cameras OFFLINE asynchronously (non-blocking)
-    prisma.camera
-      .updateMany({
-        data: { cameraStatus: "OFFLINE" },
-      })
-      .catch(() => {
-        // Silently fail - don't block response
-      });
+    // prisma.camera
+    //   .updateMany({
+    //     data: { cameraStatus: "OFFLINE" },
+    //   })
+    //   .catch(() => {
+    //     // Silently fail - don't block response
+    //   });
     // Return success=true with empty payload and let UI show offline placeholders
     const response = NextResponse.json(
       {

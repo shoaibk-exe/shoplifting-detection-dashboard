@@ -100,9 +100,12 @@ model user {
   phoneNumber           String
   status                String
   passwordResetTokenExp DateTime?
+  tenantId              Int?
+  
   apikey                apikey[]
   session               session[]
   role                  role      @relation(fields: [roleId], references: [id], map: "User_roleId_fkey")
+  tenant   tenant? @relation(fields: [tenantId], references: [id]
 
   @@index([roleId], map: "User_roleId_fkey")
 }

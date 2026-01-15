@@ -21,17 +21,17 @@ export async function GET(req: NextRequest) {
         next: { revalidate: 15 },
         signal: controller.signal,
       }),
-      new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("Timeout")), 1000)
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 1000),
       ),
     ]);
-    
+
     clearTimeout(timeout);
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(
-        `Python API responded with status: ${res.status}${text ? ` - ${text}` : ""}`
+        `Python API responded with status: ${res.status}${text ? ` - ${text}` : ""}`,
       );
     }
 
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           message: "Invalid response from Python API",
           gpuInfo: null,
         },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -63,37 +63,44 @@ export async function GET(req: NextRequest) {
         success: true,
         gpuInfo: gpuInfo,
       },
-      { status: 200 }
+      { status: 200 },
     );
 
     // Add cache headers
-    response.headers.set('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=30');
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=15, stale-while-revalidate=30",
+    );
 
     return response;
   } catch (error: any) {
     // Fail fast - don't wait for database updates
     console.debug("gpu-info: Python API unavailable, returning null gpuInfo");
-    
+
     // Don't block on database update - do it in background if needed
     // Mark cameras OFFLINE asynchronously (non-blocking)
-    prisma.camera.updateMany({
-      data: { cameraStatus: "OFFLINE" },
-    }).catch(() => {
-      // Silently fail - don't block response
-    });
+    // prisma.camera
+    //   .updateMany({
+    //     data: { cameraStatus: "OFFLINE" },
+    //   })
+    //   .catch(() => {
+    //     // Silently fail - don't block response
+    //   });
     // Return neutral GPU info (unavailable) with 200 to avoid UI error states
     const response = NextResponse.json(
       {
         success: true,
         gpuInfo: null,
       },
-      { status: 200 }
+      { status: 200 },
     );
 
     // Cache error responses for shorter time
-    response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=5, stale-while-revalidate=10",
+    );
 
     return response;
   }
 }
-
